@@ -1,0 +1,182 @@
+[
+  {
+    "id": "rider_001",
+    "vehicle_type": "Sedan",
+    "current_location": {
+      "latitude": 8.3547,
+      "longitude": 80.4136,
+      "city": "Anuradhapura",
+      "province": "North Central Province",
+      "country": "Sri Lanka"
+    },
+    "driver_details": {
+      "driver_name": "John Doe",
+      "driver_contact": "+94 77 123 4567",
+      "driver_rating": 4.8
+    },
+    "online": true,
+    "payment_Status":true
+  },
+  {
+    "id": "rider_002",
+    "vehicle_type": "SUV",
+    "current_location": {
+      "latitude": 8.3647,
+      "longitude": 80.4236,
+      "city": "Anuradhapura",
+      "province": "North Central Province",
+      "country": "Sri Lanka"
+    },
+    "driver_details": {
+      "driver_name": "Ayesha Perera",
+      "driver_contact": "+94 77 765 4321",
+      "driver_rating": 4.7
+    },
+    "online": false,
+    "payment_Status":true
+  },
+  {
+    "id": "rider_003",
+    "vehicle_type": "Hatchback",
+    "current_location": {
+      "latitude": 8.3747,
+      "longitude": 80.4336,
+      "city": "Anuradhapura",
+      "province": "North Central Province",
+      "country": "Sri Lanka"
+    },
+    "driver_details": {
+      "driver_name": "Ravi Kumar",
+      "driver_contact": "+94 77 112 2334",
+      "driver_rating": 4.5
+    },
+    "online": true,
+    "payment_Status":false
+  },
+  {
+    "id": "rider_004",
+    "vehicle_type": "Van",
+    "current_location": {
+      "latitude": 8.3847,
+      "longitude": 80.4436,
+      "city": "Anuradhapura",
+      "province": "North Central Province",
+      "country": "Sri Lanka"
+    },
+    "driver_details": {
+      "driver_name": "Saman Wijesinghe",
+      "driver_contact": "+94 77 443 5566",
+      "driver_rating": 4.6
+    },
+    "online": false,
+    "payment_Status":true
+  },
+  {
+    "id": "rider_005",
+    "vehicle_type": "Sedan",
+    "current_location": {
+      "latitude": 8.3947,
+      "longitude": 80.4536,
+      "city": "Anuradhapura",
+      "province": "North Central Province",
+      "country": "Sri Lanka"
+    },
+    "driver_details": {
+      "driver_name": "Nimali Silva",
+      "driver_contact": "+94 77 334 4488",
+      "driver_rating": 4.9
+    },
+    "online": true,
+    "payment_Status":false
+  },
+  {
+    "id": "rider_006",
+    "vehicle_type": "SUV",
+    "current_location": {
+      "latitude": 8.4047,
+      "longitude": 80.4636,
+      "city": "Anuradhapura",
+      "province": "North Central Province",
+      "country": "Sri Lanka"
+    },
+    "driver_details": {
+      "driver_name": "Ruwan Rajapaksha",
+      "driver_contact": "+94 77 223 9988",
+      "driver_rating": 4.3
+    },
+    "online": false,
+    "payment_Status":false
+  },
+  {
+    "id": "rider_007",
+    "vehicle_type": "Hatchback",
+    "current_location": {
+      "latitude": 8.4147,
+      "longitude": 80.4736,
+      "city": "Anuradhapura",
+      "province": "North Central Province",
+      "country": "Sri Lanka"
+    },
+    "driver_details": {
+      "driver_name": "Dilani Fernando",
+      "driver_contact": "+94 77 665 4433",
+      "driver_rating": 4.2
+    },
+    "online": true,
+    "payment_Status":true
+  },
+  {
+    "id": "rider_008",
+    "vehicle_type": "Van",
+    "current_location": {
+      "latitude": 8.4247,
+      "longitude": 80.4836,
+      "city": "Anuradhapura",
+      "province": "North Central Province",
+      "country": "Sri Lanka"
+    },
+    "driver_details": {
+      "driver_name": "Suresh Jayasinghe",
+      "driver_contact": "+94 77 998 5544",
+      "driver_rating": 4.4
+    },
+    "online": true,
+    "payment_Status":true
+  },
+  {
+    "id": "rider_009",
+    "vehicle_type": "Sedan",
+    "current_location": {
+      "latitude": 8.4347,
+      "longitude": 80.4936,
+      "city": "Anuradhapura",
+      "province": "North Central Province",
+      "country": "Sri Lanka"
+    },
+    "driver_details": {
+      "driver_name": "Chandana Perera",
+      "driver_contact": "+94 77 667 8855",
+      "driver_rating": 4.6
+    },
+    "online": false,
+    "payment_Status":false
+  },
+  {
+    "id": "rider_010",
+    "vehicle_type": "SUV",
+    "current_location": {
+      "latitude": 8.4447,
+      "longitude": 80.5036,
+      "city": "Anuradhapura",
+      "province": "North Central Province",
+      "country": "Sri Lanka"
+    },
+    "driver_details": {
+      "driver_name": "Kavinda Senanayake",
+      "driver_contact": "+94 77 334 2211",
+      "driver_rating": 4.7
+    },
+    "online": true,
+    "payment_Status":true
+  }
+]
