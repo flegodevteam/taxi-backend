@@ -16,7 +16,7 @@ const router = express.Router();
 router.post("/add-vehicle-package",authenticateToken, addVehiclePackage);
 
 // Get all vehicle packages
-router.get("/vehicle-packages", getAllVehiclePackages);
+router.get("/vehicle-packages", authenticateToken,getAllVehiclePackages);
 
 // Get a single vehicle package by ID
 router.get("/vehicle-packages/:id", authenticateToken,getVehiclePackageById);

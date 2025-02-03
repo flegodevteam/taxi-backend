@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const {getAllDrivers,getDriverByEmail,deleteDriver,updatePaymentStatus,loginByPhoneNumber ,registerDriver, updateDriverLocation,driverLogin,updateIsAdminApprove,updateIsActive,driverLoginByEmail} = require('../controllers/driverController');
+const {getActiveDriversWithLocation,getAllDrivers,getDriverByEmail,deleteDriver,updatePaymentStatus,loginByPhoneNumber ,registerDriver, updateDriverLocation,driverLogin,updateIsAdminApprove,updateIsActive,driverLoginByEmail} = require('../controllers/driverController');
 const {authenticateToken} = require("../Middleware/Auth")
 
 
@@ -8,13 +8,13 @@ const {authenticateToken} = require("../Middleware/Auth")
 router.get('/get-all-drivers', authenticateToken,getAllDrivers);
 
 // Route to get a driver by email
-router.get('/get-driver-by-email/:email', authenticateToken,getDriverByEmail);
+router.get('/get-driver-by-email/:driverId', authenticateToken,getDriverByEmail);
 
 //delete a driver
-router.delete('/delete-driver/:email', authenticateToken,deleteDriver );
+router.delete('/delete-driver/:driverId', authenticateToken,deleteDriver );
 
 // Route to update payment status for a driver by email
-router.put('/update-payment-status/:email', authenticateToken,updatePaymentStatus);
+router.put('/update-payment-status/:driverId', authenticateToken,updatePaymentStatus);
 
 router.post('/login-by-phone', loginByPhoneNumber);
 
@@ -28,14 +28,15 @@ router.put('/update-location', authenticateToken,updateDriverLocation);
 router.post('/driver-Login', driverLogin);
 
 // Update admin approval status
-router.put('/update-admin-approve/:email', updateIsAdminApprove);
+router.put('/update-admin-approve/:driverId', authenticateToken,updateIsAdminApprove);
 
 // Update active status
-router.put('/update-active-status/:email', updateIsActive);
+router.put('/update-active-status/:driverId',authenticateToken, updateIsActive);
 
 //driver login by email and pw
 router.post('/driver-Login-by-email', driverLoginByEmail);
 
 
+router.get('/get-all-active-drivers',authenticateToken,getActiveDriversWithLocation);
 
 module.exports = router;

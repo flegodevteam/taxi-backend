@@ -8,16 +8,16 @@ router.post('/create', createUser);
 //reg
 router.post('/register', registerUser);
 
-router.get('/get-user-by-email/:email', authenticateToken,getUserByEmail);
+router.get('/get-user-by-email/:userId',authenticateToken,getUserByEmail);
 
 // Login route
 router.post('/login', loginUser);
 
 //get all users
-router.get('/get-all-users',getAllUsers);
+router.get('/get-all-users',authenticateToken,getAllUsers);
 
 // Route to delete a user by email
-router.delete('/delete-user/:email', authenticateToken,deleteUser);
+router.delete('/delete-user/:userId',authenticateToken,deleteUser);
 
 router.post('/user-Login-by-phoneNumber', loginByPhoneNumber);
 

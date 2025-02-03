@@ -47,14 +47,23 @@ const registerUser = async (req, res) => {
         } = req.body;
 
         // Check for required fields
-        if (!email || !fcmToken || !password) {
+        if (!email || !fcmToken || !password || !userId) {
             return res.status(400).send({ error: "Email, FCM token, and password are required." });
         }
 
         // Check if email already exists
-        const existingUser = await db.collection("users").doc(email).get();
+        const existingUser = await db.collection("users").doc(userId).get();
         if (existingUser.exists) {
-            return res.status(400).send({ error: "A user with this email already exists. Please use a different email." });
+            return res.status(400).send({ error: "A user with this userId already exists. Please use a different email." });
+        }
+
+        // Check if phoneNumber already exists
+        const existingUserByPhoneNumber = await db
+            .collection("users")
+            .where("phoneNumber", "==", phoneNumber)
+            .get();
+        if (!existingUserByPhoneNumber.empty) {
+            return res.status(400).send({ error: "A user with this phone number already exists. Please use a different phone number." });
         }
 
         // Hash the password before saving it
@@ -76,15 +85,16 @@ const registerUser = async (req, res) => {
             registed_Date,
             points,
             fcmToken,
-            user_role:"user"
+            user_role:"user",
+            //registeredTime: new Date().toISOString()
         };
 
         // Save data to the Firestore collection (e.g., "users")
-        const userRef = db.collection("users").doc(email);
+        const userRef = db.collection("users").doc(userId);
         await userRef.set(userData);
 
         // Save the FCM token in the Realtime Database
-        const fcmTokenPath = `users_tokens/${email.replace(/\./g, "_")}`;
+        const fcmTokenPath = `users_tokens/${userId}`;
         await realtimeDb.ref(fcmTokenPath).set(fcmToken);
 
         // Send a response after the data is saved
@@ -486,6 +496,16 @@ const loginByPhoneNumber = async (req, res) => {
                 lastName: userData.lastName,
                 email: userData.email,
                 phoneNumber: userData.phoneNumber,
+                iDnum: userData.iDnum,
+                birthday: userData.birthday,
+                province: userData.province,
+                district: userData.district,
+                profileImg: userData.profileImg,
+                registed_Date: userData.registed_Date,
+                points: userData.points,
+                fcmToken: userData.fcmToken,
+                user_role: userData.user_role,
+                
             },
         });
     } catch (error) {
@@ -562,15 +582,15 @@ const getAllUsers = async (req, res) => {
 const getUserByEmail = async (req, res) => {
     try {
         // Extract email from request params
-        const { email } = req.params;
+        const { userId } = req.params;
 
         // Validate email input
-        if (!email) {
-            return res.status(400).send({ error: "Email is required." });
+        if (!userId) {
+            return res.status(400).send({ error: "userId is required." });
         }
 
         // Fetch the user document by email
-        const userDoc = await db.collection("users").doc(email).get();
+        const userDoc = await db.collection("users").doc(userId).get();
 
         // Check if the user exists
         if (!userDoc.exists) {
@@ -590,26 +610,33 @@ const getUserByEmail = async (req, res) => {
 
 const deleteUser = async (req, res) => {
     try {
-        const { email } = req.params;
+        const { userId } = req.params;
 
         // Check if the user exists
-        const userDoc = await firestore.collection("users").doc(email).get();
+        const userRef = firestore.collection("users").doc(userId);
+        const userDoc = await userRef.get();
+
         if (!userDoc.exists) {
-            return res.status(404).send({ message: `User with email ${email} not found.` });
+            return res.status(404).send({ message: `User with ID ${userId} not found.` });
         }
 
+        // Save user details in the "bannedUsers" collection
+        const userData = userDoc.data();
+        await firestore.collection("banned_Users").doc(userId).set(userData);
+
         // Delete the user data from Firestore
-        await firestore.collection("users").doc(email).delete();
+        await userRef.delete();
 
         // Delete the FCM token from the Realtime Database
-        const fcmTokenPath = `users_tokens/${email.replace(/\./g, "_")}`;
+        const fcmTokenPath = `users_tokens/${userId}`;
         await realtimeDb.ref(fcmTokenPath).remove();
 
-        res.status(200).send({ message: `User with email ${email} deleted successfully.` });
+        res.status(200).send({ message: `User with ID ${userId} deleted successfully and moved to bannedUsers.` });
     } catch (error) {
         res.status(500).send({ error: error.message });
     }
 };
+
 
 
 
