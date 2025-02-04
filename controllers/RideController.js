@@ -4,6 +4,10 @@ const { firestore, realtimeDb } = require("../firebase/firebaseConfig");
 const { calculateFullCost2 } = require("./CalculationController");
 const axios = require("axios");
 
+
+
+
+
 //Controller for send the ride requests using Push notitications
 const sendRideRequest = async (driverId, rideDetails) => {
   try {
@@ -788,22 +792,25 @@ const respondToRideRequest = async (req, res) => {
 };
 
 
-const getRideRequestsForDriver = async (req, res) => {
-  try {
-    const { driverId } = req.params;
 
-    if (!driverId) {
-      return res.status(400).send({ error: "Driver ID is required." });
-    }
+const getRideRequestsForDriver = (ws, driverId) => {
+  console.log(`Fetching ride requests for driver: ${driverId}`); // Debugging log
 
-    const db = admin.database();
-    const requestsSnapshot = await db.ref("ride_requests").once("value");
+  if (!driverId) {
+    ws.send(JSON.stringify({ error: "Driver ID is required." }));
+    ws.close();
+    return;
+  }
+
+  const db = admin.database();
+  db.ref("ride_requests").once("value", (requestsSnapshot) => {
+    console.log("Ride requests snapshot:", requestsSnapshot.val()); // Debugging log
 
     if (!requestsSnapshot.exists()) {
-      return res.status(404).send({ message: "No ride requests found." });
+      ws.send(JSON.stringify({ message: "No ride requests found." }));
+      ws.close();
+      return;
     }
-
-    console.log("Fetched ride requests:", requestsSnapshot.val());
 
     const driverRideRequests = [];
 
@@ -819,47 +826,42 @@ const getRideRequestsForDriver = async (req, res) => {
     });
 
     if (driverRideRequests.length === 0) {
-      return res.status(404).send({
-        message: `No pending ride requests found for driver: ${driverId}.`,
-      });
+      ws.send(JSON.stringify({ message: `No pending ride requests for driver: ${driverId}.` }));
+      ws.close();
+      return;
     }
-
-    res.status(200).setHeader("Content-Type", "application/json");
 
     let index = 0;
 
-    const interval = setInterval(() => {
+    const sendNextRideRequest = () => {
       if (index >= driverRideRequests.length) {
-        clearInterval(interval);
-        res.end(); // Close the connection after all ride requests are sent
+        ws.close();
         return;
       }
 
-      res.write(
+      ws.send(
         JSON.stringify({
           message: "Ride request",
           rideRequest: driverRideRequests[index],
-        }) + "\n"
+        })
       );
 
-      index++; // Move to the next ride request
-    }, 5000);
+      index++;
+      setTimeout(sendNextRideRequest, 5000); // Send next request after 5 seconds
+    };
 
-    // Send the first ride request immediately
-    res.write(
-      JSON.stringify({
-        message: "Ride request",
-        rideRequest: driverRideRequests[index],
-      }) + "\n"
-    );
-
-    index++; // Move to the next ride request
-
-  } catch (error) {
+    sendNextRideRequest(); // Start sending requests
+  }).catch((error) => {
     console.error("Error fetching ride requests:", error.message);
-    res.status(500).send({ error: error.message });
-  }
-}
+    ws.send(JSON.stringify({ error: error.message }));
+    ws.close();
+  });
+};
+
+
+
+
+
 
   
 
