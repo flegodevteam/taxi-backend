@@ -58,26 +58,42 @@ wss.on("connection", (ws) => {
 
   // Heartbeat to prevent timeouts
   ws.isAlive = true;
-  ws.on("pong", () => ws.isAlive = true);
+  ws.on("pong", () => (ws.isAlive = true));
 
   const heartbeatInterval = setInterval(() => {
     wss.clients.forEach((client) => {
       if (!client.isAlive) return client.terminate();
-
       client.isAlive = false;
       client.ping();
     });
-  }, 30000);  // Ping every 30 seconds
+  }, 30000); // Ping every 30 seconds
 
-  ws.on("message", (message) => {
+  ws.on("message", async (message) => {
     try {
       const parsedMessage = JSON.parse(message);
-      const { driverId } = parsedMessage;
-      if (!driverId) {
-        ws.send(JSON.stringify({ error: "Driver ID is required." }));
-        return;
+      
+      if (parsedMessage.driverId) {
+        // Handle fetching ride requests for a driver
+        getRideRequestsForDriver(ws, parsedMessage.driverId);
+      } else if (parsedMessage.userId) {
+        // Handle fetching the latest ride for a user
+        const userId = parsedMessage.userId;
+
+        try {
+          const rideDetails = await getLatestRideByUser(userId);
+          
+          if (!rideDetails) {
+            ws.send(JSON.stringify({ message: "No ride found for the provided userId." }));
+          } else {
+            ws.send(JSON.stringify({ message: "Ride details", rideDetails }));
+          }
+        } catch (error) {
+          console.error("Error fetching ride details:", error);
+          ws.send(JSON.stringify({ error: "Failed to fetch ride details." }));
+        }
+      } else {
+        ws.send(JSON.stringify({ error: "Invalid request. Provide either driverId or userId." }));
       }
-      getRideRequestsForDriver(ws, driverId);
     } catch (error) {
       ws.send(JSON.stringify({ error: "Invalid JSON format." }));
     }
