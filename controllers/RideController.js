@@ -1226,20 +1226,12 @@ const getAllRatings = async (req, res) => {
   }
 };
 
-const getLatestRideByUser = async (req, res) => {
+const getLatestRideByUser = async (userId) => {
   try {
-    // Step 1: Extract the rideId from the request query or body
-    const { userId } = req.params; // Assuming rideId is passed as a route parameter
+    if (!userId) throw new Error("Missing userId in the request.");
 
-    if (!userId) {
-      return res.status(400).json({
-        message: "Missing rideId in the request.",
-      });
-    }
+    console.log(`Fetching ride details for userId: ${userId}`);
 
-    console.log(`Fetching ride details for rideId: ${userId}`);
-
-    // Step 2: Query Firestore for the ride with the given rideId (confirmedRideId)
     const ridesCollection = admin.firestore().collection("rides");
     const querySnapshot = await ridesCollection
       .where("userId", "==", userId)
@@ -1247,27 +1239,16 @@ const getLatestRideByUser = async (req, res) => {
       .get();
 
     if (querySnapshot.empty) {
-      return res.status(404).json({
-        message: "No ride found with the provided userId.",
-      });
+      return null;
     }
 
-    // Step 3: Extract and return ride details
-    const rideDetails = querySnapshot.docs[0].data(); // Assuming one ride per rideId
-
-
-    return res.status(200).json({
-      message: "Ride details fetched successfully.",
-      rideDetails,
-    });
+    return querySnapshot.docs[0].data();
   } catch (error) {
     console.error("Error fetching ride details:", error);
-    return res.status(500).json({
-      message: "Failed to fetch ride details.",
-      error: error.message,
-    });
+    throw new Error("Failed to fetch ride details.");
   }
 };
+
 
 const updateRideCost = async (req, res) => {
   const { rideId } = req.params; // Get rideId from URL parameter (assumed to be confirmedRideId)
