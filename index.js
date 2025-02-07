@@ -33,7 +33,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Import routes
 const { getRideRequestsForDriver } = require("./controllers/RideController");
-
+const {getLatestRideByUser} = require("./controllers/RideController")
 const userRoutes = require("./Routes/userRoutes");
 const rideRoutes = require("./Routes/rideRoutes");
 const VehicleRoutes = require("./Routes/VehicleRoutes");
