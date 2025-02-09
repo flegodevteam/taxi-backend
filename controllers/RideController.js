@@ -3,7 +3,7 @@ const admin = require("firebase-admin");
 const { firestore, realtimeDb } = require("../firebase/firebaseConfig");
 const { calculateFullCost2 } = require("./CalculationController");
 const axios = require("axios");
-
+require("dotenv").config();
 
 
 
@@ -22,50 +22,55 @@ const sendRideRequest = async (driverId, rideDetails) => {
       vehicle_type: rideDetails.whichVehicle,
       waiting_time: 0,
     });
-    const googleMapsApiKey = 'AIzaSyCJkUwpCzeZDEB_WG8G6etP469AgEZwvs0';
+    const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY; 
 
-    // Function to get distance using Google Maps API
-    // const validateCoordinates = (latitude, longitude) => {
-    //   return typeof latitude === "number" && typeof longitude === "number" &&
-    //          latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180;
-    // };
+   // Function to validate latitude & longitude
+const validateCoordinates = (latitude, longitude) => {
+  return typeof latitude === "number" && typeof longitude === "number" &&
+         latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180;
+};
+
+const getGoogleMapsDistance = async (rideDetails) => {
+  const { currentLocation, destinationLocation } = rideDetails;
+
+  // Validate input coordinates
+  if (!validateCoordinates(currentLocation.latitude, currentLocation.longitude) ||
+      !validateCoordinates(destinationLocation.latitude, destinationLocation.longitude)) {
+    console.error("Invalid coordinates:", currentLocation, destinationLocation);
+    throw new Error("Invalid coordinates provided.");
+  }
+
+ 
+  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${currentLocation.latitude},${currentLocation.longitude}&destinations=${destinationLocation.latitude},${destinationLocation.longitude}&mode=driving&key=${googleMapsApiKey}`;
+
+  try {
+    const response = await axios.get(url);
+    console.log("Google Maps API Response:", JSON.stringify(response.data, null, 2));
+
+    // Check API response validity
+    if (response.data.status !== "OK") {
+      throw new Error(`Google Maps API error: ${response.data.status}`);
+    }
+
+    const element = response.data.rows[0]?.elements[0];
     
-    // const getGoogleMapsDistance = async (rideDetails) => {
-    //   const { currentLocation, destinationLocation } = rideDetails;
-    
-    //   // Validate input coordinates
-    //   if (!validateCoordinates(currentLocation.latitude, currentLocation.longitude) ||
-    //       !validateCoordinates(destinationLocation.latitude, destinationLocation.longitude)) {
-    //     console.error("Invalid coordinates:", currentLocation, destinationLocation);
-    //     throw new Error("Invalid coordinates provided.");
-    //   }
-    
-    //   const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${currentLocation.latitude},${currentLocation.longitude}&destinations=${destinationLocation.latitude},${destinationLocation.longitude}&key=${googleMapsApiKey}&units=metric`;
-    
-    //   try {
-    //     const response = await axios.get(url);
-    //     console.log("Google Maps API Response:", JSON.stringify(response.data, null, 2));
-    
-    //     // Check if route exists
-    //     if (response.data.status === "OK" && response.data.rows[0].elements[0].status === "OK") {
-    //       return response.data.rows[0].elements[0].distance.value / 1000; // Convert meters to km
-    //     } else if (response.data.rows[0].elements[0].status === "ZERO_RESULTS") {
-    //       throw new Error("No driving route found between the given locations.");
-    //     } else {
-    //       throw new Error("Invalid response from Google Maps API: " + JSON.stringify(response.data));
-    //     }
-    //   } catch (error) {
-    //     console.error("Error fetching distance from Google Maps API:", error.message);
-    //     throw new Error("Error fetching distance from Google Maps API");
-    //   }
-    // };
+    if (!element || element.status !== "OK") {
+      throw new Error(`No valid route found. API Response: ${JSON.stringify(response.data)}`);
+    }
+
+    return element.distance.value / 1000; // Convert meters to km
+  } catch (error) {
+    console.error("Error fetching distance from Google Maps API:", error.message);
+    throw new Error("Error fetching distance from Google Maps API");
+  }
+};
     
     
     
 
     // Await the result of getGoogleMapsDistance to resolve the promise
-    //const distance = await getGoogleMapsDistance(rideDetails);  // Awaiting the distance here
-    const distance = 0; 
+    const distance = await getGoogleMapsDistance(rideDetails);  // Awaiting the distance here
+    //const distance = 0; 
     console.log(`Calculated cost for ride: ${fullCost} (distance: ${distance.toFixed(2)} km)`);  // Now you have the actual value
 
     // Push the ride request details into Realtime Database
