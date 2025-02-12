@@ -51,6 +51,17 @@ const registerUser = async (req, res) => {
             return res.status(400).send({ error: "Email, FCM token, and password are required." });
         }
 
+        const bannedSnapshot = await firestore.collection("banned_Users").get();
+        const bannedNumbers = bannedSnapshot.docs
+            .map(doc => doc.get("phoneNumber")) // Ensure correct field retrieval
+            .filter(phoneNumber => phoneNumber !== undefined); // Remove undefined values
+
+        console.log("Banned Numbers:", bannedNumbers);
+
+        if (bannedNumbers.includes(phoneNumber)) {
+            return res.status(400).send({ error: "This phone Number  is banned. Registration denied." });
+        }
+
         // Check if email already exists
         const existingUser = await db.collection("users").doc(userId).get();
         if (existingUser.exists) {
