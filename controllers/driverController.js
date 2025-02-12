@@ -694,6 +694,32 @@ const getActiveDriversWithLocation = async (req, res) => {
     }
 };
 
+const getAllBannedDrivers = async (req, res) => {
+    try {
+        // Retrieve all documents from the banned_drivers collection
+        const bannedDriversSnapshot = await firestore.collection("banned_drivers").get();
+
+        // Check if there are any banned drivers
+        if (bannedDriversSnapshot.empty) {
+            return res.status(404).send({ message: "No banned drivers found." });
+        }
+
+        // Map through the documents and extract the data
+        const bannedDrivers = bannedDriversSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+        }));
+
+        // Send the list of banned drivers in the response
+        res.status(200).send({
+            message: "Banned drivers retrieved successfully.",
+            data: bannedDrivers,
+        });
+    } catch (error) {
+        // Send a response if an error occurs
+        res.status(500).send({ error: error.message });
+    }
+};
 
 module.exports = {
     getAllDrivers,
@@ -708,5 +734,6 @@ module.exports = {
     updateIsAdminApprove,
     updateIsActive,
     driverLoginByEmail,
-    getActiveDriversWithLocation
+    getActiveDriversWithLocation,
+    getAllBannedDrivers
   };

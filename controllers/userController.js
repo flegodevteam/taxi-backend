@@ -700,6 +700,68 @@ const loginUserByEmail = async (req, res) => {
     }
 };
 
+const updateUserPoints = async (req, res) => {
+    try {
+        // Extract userId from the request parameters and points from the request body
+        const { userId } = req.params;
+        const { points } = req.body;
+
+        // Check for required fields
+        if (!userId || points === undefined) {
+            return res.status(400).send({ error: "User  Id and points are required." });
+        }
+
+        // Check if the user exists
+        const userRef = db.collection("users").doc(userId);
+        const userDoc = await userRef.get();
+        if (!userDoc.exists) {
+            return res.status(404).send({ error: "User  not found." });
+        }
+
+        // Update the points for the user
+        await userRef.update({ points });
+
+        // Send a response after the points are updated
+        res.status(200).send({
+            message: "User  points updated successfully",
+            data: {
+                userId,
+                points,
+            },
+        });
+    } catch (error) {
+        // Send a response if an error occurs
+        res.status(500).send({ error: error.message });
+    }
+};
+
+const getAllBannedUsers = async (req, res) => {
+    try {
+        // Retrieve all documents from the banned_Users collection
+        const bannedUsersSnapshot = await firestore.collection("banned_Users").get();
+
+        // Check if there are any banned users
+        if (bannedUsersSnapshot.empty) {
+            return res.status(404).send({ message: "No banned users found." });
+        }
+
+        // Map through the documents and extract the data
+        const bannedUsers = bannedUsersSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+        }));
+
+        // Send the list of banned users in the response
+        res.status(200).send({
+            message: "Banned users retrieved successfully.",
+            data: bannedUsers,
+        });
+    } catch (error) {
+        // Send a response if an error occurs
+        res.status(500).send({ error: error.message });
+    }
+};
+
 module.exports = {
     createUser,
     registerUser,
@@ -708,5 +770,7 @@ module.exports = {
     getAllUsers,
     deleteUser,
     loginByPhoneNumber,
-    loginUserByEmail
+    loginUserByEmail,
+    updateUserPoints,
+    getAllBannedUsers
 };
