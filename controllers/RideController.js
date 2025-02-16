@@ -161,7 +161,12 @@ const requestRide = async (req, res) => {
 
     const db = admin.firestore();
     //console.log("Step 1: Fetching approved drivers with isAdminApprove = true");
-
+    const maxAttempts = 5; // Maximum number of attempts to find a driver
+    let attempt = 0;
+    let foundDriver = null;
+    let driversWithin5km = [];
+    while (attempt < maxAttempts && !foundDriver) {
+      attempt++;
     // Step 1: Fetch approved drivers with 'isAdminApprove' = 'approved'
 const approvedDriversSnapshot = await db
 .collection("drivers_personal_data")
@@ -175,7 +180,8 @@ const approvedDriversSnapshot = await db
         .send({ message: "No approved drivers available." });
     }
 
-   // console.log("Approved drivers found:", approvedDriversSnapshot.docs.length);
+    ///console.log("approved drivers",approvedDriversSnapshot)
+   console.log("Approved drivers found:", approvedDriversSnapshot.docs.length);
     // Extract emails of approved drivers
     const approvedDriverEmails = approvedDriversSnapshot.docs.map(
       (doc) => doc.id
@@ -194,10 +200,12 @@ const approvedDriversSnapshot = await db
       return res.status(404).send({ message: "No active drivers available." });
     }
 
-   // console.log("Active drivers found:", activeDriversSnapshot.docs.length);
+   console.log("Active drivers found:", activeDriversSnapshot.docs.length);
     const activeApprovedDrivers = activeDriversSnapshot.docs.filter((doc) =>
       approvedDriverEmails.includes(doc.id)
     );
+
+    
 
     if (activeApprovedDrivers.length === 0) {
       console.log("No drivers match the active and approved criteria.");
@@ -219,7 +227,7 @@ const approvedDriversSnapshot = await db
     const finalDrivers = await Promise.all(
       activeApprovedDrivers.map(async (doc) => {
 
-        // console.log("doc",doc) 
+         //console.log("doc",doc) 
 
         const driverEmail = doc.id;
         const driverPersonalData = await db
@@ -244,19 +252,21 @@ const approvedDriversSnapshot = await db
     // Remove null entries
     const eligibleDrivers = finalDrivers.filter((driver) => driver !== null);
 
-    //console.log("Eligible drivers:", eligibleDrivers.length);
+    console.log("Eligible drivers:", eligibleDrivers);
 
     if (eligibleDrivers.length === 0) {
       console.log("No drivers match the payment status criteria.");
-      return res
-        .status(404)
-        .send({ message: "No drivers match the payment status criteria." });
+      // return res
+      //   .status(404)
+      //   .send({ message: "No drivers match the payment status criteria." });
+      await new Promise(resolve => setTimeout(resolve, 30000));
+        continue;
     }
 
     //console.log("Step 4: Filtering drivers within 5km radius");
 
     // Step 4: Filter drivers within 5km radius
-    const driversWithin5km = eligibleDrivers.filter((driver) => {
+    driversWithin5km = eligibleDrivers.filter((driver) => {
       if (!driver.current_location) return false;
       const driverLocation = {
         latitude: driver.current_location.latitude,
@@ -264,6 +274,27 @@ const approvedDriversSnapshot = await db
       };
       return geolib.getDistance(currentLocation, driverLocation) <= 5000;
     });
+
+    if (driversWithin5km.length === 0) {
+      console.log("No drivers found within 5km.");
+      // Optionally wait before retrying
+      await new Promise(resolve => setTimeout(resolve, 30000)); // Wait for 3 seconds before retrying
+      continue; // Retry the loop
+    }
+
+    // If we reach here, we have found eligible drivers within 5km
+    foundDriver = driversWithin5km[0]; // You can choose how to select the driver
+
+    // Proceed with sending the ride request to the found driver
+    // (Add your logic to send the ride request here)
+
+    // For demonstration, let's just log the found driver
+    console.log("Found driver:", foundDriver);
+  }
+
+  if (!foundDriver) {
+    return res.status(404).send({ message: "No suitable drivers found after multiple attempts." });
+  }
 
     // console.log("Drivers within 5km:", driversWithin5km);
 
@@ -401,7 +432,7 @@ const approvedDriversSnapshot = await db
         userEmail,
         userId,phoneNumber,
         driverEmail: firstDriver.email,
-        driverId: driverId,
+        driverId: firstDriver.email,
         status: "Request sent",
         currentLocation,
         destinationLocation,
@@ -414,7 +445,7 @@ const approvedDriversSnapshot = await db
       await db.collection("ride_requests").add(requestPayload);
     } catch (error) {
       console.error(
-        `Error sending request to driver ${firstDriver.email}:`,
+        `Error sending request to driver -1 ${firstDriver.email}:`,
         error.message
       );
     }
@@ -456,6 +487,9 @@ const approvedDriversSnapshot = await db
     res.status(500).send({ error: error.message });
   }
 };
+
+
+
 
 // Initialize Firestore
 const db = admin.database();
@@ -668,6 +702,10 @@ const updateWaitingTime = async (req, res) => {
         error: "Ride not found.",
       });
     }
+
+    req.on("close", () => {
+      console.log("Client aborted the request.");
+    });
 
     const rideData = rideDoc.data();
 
@@ -1489,13 +1527,100 @@ const getEndedRidesByDriver = async (req, res) => {
   }
 };
 
+const getAssignedDriverLocation = async (req, res) => {
+  try {
+    const { confirmedRideId } = req.params;
+
+    if (!confirmedRideId) {
+      return res.status(400).json({ error: "confirmedRideId is required." });
+    }
+
+    console.log(`Fetching driver location for confirmedRideId: ${confirmedRideId}`);
+
+    // 🔹 Step 1: Get ride details from "rides" collection
+    const rideSnapshot = await admin.firestore()
+      .collection("rides")
+      .where("confirmedRideId", "==", confirmedRideId)
+      .limit(1)
+      .get();
+
+    if (rideSnapshot.empty) {
+      return res.status(404).json({ message: "Ride not found." });
+    }
+
+    const rideData = rideSnapshot.docs[0].data();
+    console.log("Ride Data:", rideData);
+
+    const driverId = rideData.driverId;
+    if (!driverId) {
+      return res.status(404).json({ message: "Driver ID not found in ride data." });
+    }
+
+    console.log(`Fetching all driver locations...`);
+
+    // 🔹 Step 2: Fetch ALL drivers from "drivers_location" collection
+    const driverSnapshot = await admin.firestore().collection("drivers_location").get();
+
+    if (driverSnapshot.empty) {
+      return res.status(404).json({ message: "No drivers found in drivers_location collection." });
+    }
+
+    let allDrivers = [];
+
+    driverSnapshot.forEach((doc) => {
+      const driverData = doc.data();
+
+      // Get driverId from document data or fallback to document ID
+      const driverId = driverData.driverId || doc.id; // Use doc.id if driverId is missing inside document
+
+      if (!driverData.current_location) {
+        console.warn(`Warning: Driver ${driverId} has no current_location.`);
+        return; // Skip this driver and continue
+      }
+
+      allDrivers.push({
+        driverId: driverId, // Correctly assigned driverId
+        latitude: driverData.current_location?.latitude || 0,
+        longitude: driverData.current_location?.longitude || 0,
+        isActive: driverData.isActive ?? false,
+      });
+    });
+
+    console.log("All Driver Locations:", allDrivers);
+
+     // Find the correct driver location for the driverId
+     const assignedDriverLocation = allDrivers.find((driver) => driver.driverId === driverId);
+
+     if (!assignedDriverLocation) {
+       console.log(`Driver with driverId: ${driverId} not found in drivers_location collection.`);
+       return res.status(404).json({ message: "Driver location not found." });
+     }
+ 
+     console.log("Assigned Driver Location:", assignedDriverLocation);
+
+   // console.log("Driver Location Data:", matchingDrivers);
+
+    return res.status(200).json({
+      message: "Driver location(s) fetched successfully.",
+      driverLocations: assignedDriverLocation, // Returns an array of all matched drivers
+    });
+
+  } catch (error) {
+    console.error("Error fetching driver location:", error);
+    return res.status(500).json({ error: "Internal server error." });
+  }
+};
+
+
+
 module.exports = {
   getAcceptedRequests,
   requestRide,
   sendRideRequest,
   respondToRideRequest,
   handleRideRequest,
-  getRideRequestsForDriver,
+  getAssignedDriverLocation ,
+ getRideRequestsForDriver,
   updateWaitingTime,
   getRideDetails,
   updateRideStatus,

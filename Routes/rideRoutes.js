@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const {getEndedRidesByUser,getEndedRidesByDriver,getStartedRidesByDriver,getStartedRidesByUser,updateRideCost,getLatestRideByUser,getAllRatings,getRejectedRequests,getAcceptedRequests,getAllRidesByDate,requestRide,getRideRequestsForDriver,handleRideRequest,updateWaitingTime,getRideDetails,updateRideStatus,updateRideRating,getRideRating} = require("../controllers/RideController")
+const {getAssignedDriverLocation ,getEndedRidesByUser,getEndedRidesByDriver,getStartedRidesByDriver,getStartedRidesByUser,updateRideCost,getLatestRideByUser,getAllRatings,getRejectedRequests,getAcceptedRequests,getAllRidesByDate,requestRide,getRideRequestsForDriver,handleRideRequest,updateWaitingTime,getRideDetails,updateRideStatus,updateRideRating,getRideRating} = require("../controllers/RideController")
 const {authenticateToken} = require("../Middleware/Auth")
 
 router.post('/request-ride', authenticateToken,requestRide);
@@ -10,6 +10,9 @@ router.get('/ride-requests/:driverId',authenticateToken, getRideRequestsForDrive
 router.post('/handle-ride-request/:driverId', authenticateToken,handleRideRequest);
 
 router.put("/update-Waiting-Time/:confirmedRideId",authenticateToken, updateWaitingTime);
+
+router.get("/get-driver-location/:confirmedRideId",getAssignedDriverLocation);
+
 
 router.get('/get-ride-by-rideId/:rideId', authenticateToken,getRideDetails);
 
