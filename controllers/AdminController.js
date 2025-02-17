@@ -11,11 +11,12 @@ const registerAdmin = async (req, res) => {
             phoneNumber,
             password,
             nic,
-            userRole
+            userRole,
+            adminId
         } = req.body;
 
         // Check for required fields
-        if (!email || !password || !userRole) {
+        if (!email || !password || !userRole || !adminId ) {
             return res.status(400).send({ error: "Email, password, and user role are required." });
         }
 
@@ -24,6 +25,13 @@ const registerAdmin = async (req, res) => {
         if (existingAdmin.exists) {
             return res.status(400).send({ error: "An admin with this email already exists. Please use a different email." });
         }
+
+         // Check if adminId already exists
+         const existingAdmin2 = await db.collection("admins").doc(adminId).get();
+         if (existingAdmin2.exists) {
+             return res.status(400).send({ error: "An admin with this ID already exists. Please use a different ID." });
+         }
+
 
         // Hash the password before saving it
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -36,11 +44,12 @@ const registerAdmin = async (req, res) => {
             phoneNumber,
             password: hashedPassword,
             nic,
-            userRole
+            userRole,
+            adminId
         };
 
         // Save data to the Firestore collection (e.g., "admins")
-        const adminRef = db.collection("admins").doc(email);
+        const adminRef = db.collection("admins").doc(adminId);
         await adminRef.set(adminData);
 
         // Send a success response
@@ -52,7 +61,8 @@ const registerAdmin = async (req, res) => {
                 email,
                 phoneNumber,
                 nic,
-                userRole
+                userRole,
+                adminId
             },
         });
     } catch (error) {
@@ -110,6 +120,7 @@ const loginAdmin = async (req, res) => {
                 phoneNumber: adminData.phoneNumber,
                 nic: adminData.nic,
                 userRole: adminData.userRole,
+                adminId:adminData.adminId
             },
         });
     } catch (error) {

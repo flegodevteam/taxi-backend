@@ -773,6 +773,65 @@ const getAllBannedUsers = async (req, res) => {
     }
 };
 
+const updateUser = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const updateData = req.body;
+
+        if (!userId) {
+            return res.status(400).send({ error: "User ID is required." });
+        }
+
+        // Reference to the user's document
+        const userRef = db.collection("users").doc(userId);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+            return res.status(404).send({ error: "User not found." });
+        }
+
+        const existingUserData = userDoc.data();
+
+        // Check if the updated email already exists (if provided)
+        if (updateData.email && updateData.email !== existingUserData.email) {
+            const existingUserByEmail = await db
+                .collection("users")
+                .where("email", "==", updateData.email)
+                .get();
+            if (!existingUserByEmail.empty) {
+                return res.status(400).send({ error: "A user with this email already exists." });
+            }
+        }
+
+        // Check if the updated phone number already exists (if provided)
+        if (updateData.phoneNumber && updateData.phoneNumber !== existingUserData.phoneNumber) {
+            const existingUserByPhone = await db
+                .collection("users")
+                .where("phoneNumber", "==", updateData.phoneNumber)
+                .get();
+            if (!existingUserByPhone.empty) {
+                return res.status(400).send({ error: "A user with this phone number already exists." });
+            }
+        }
+
+        // If updating the password, hash the new password
+        if (updateData.password) {
+            updateData.password = await bcrypt.hash(updateData.password, 10);
+        }
+
+        // Update the user's document in Firestore
+        await userRef.update(updateData);
+
+        res.status(200).send({
+            message: "User updated successfully",
+            userId,
+        });
+    } catch (error) {
+        res.status(500).send({ error: error.message });
+    }
+};
+
+
 module.exports = {
     createUser,
     registerUser,
@@ -783,5 +842,6 @@ module.exports = {
     loginByPhoneNumber,
     loginUserByEmail,
     updateUserPoints,
-    getAllBannedUsers
+    getAllBannedUsers,
+    updateUser
 };

@@ -823,6 +823,59 @@ const getAllBannedDrivers = async (req, res) => {
   }
 };
 
+const updateDriver = async (req, res) => {
+  try {
+      const { driverId } = req.params;
+      const updateData = req.body;
+
+      // Check if driverId is provided
+      if (!driverId) {
+          return res.status(400).send({ error: "Driver ID is required." });
+      }
+
+      // Reference to the driver's personal data document
+      const driverRef = firestore.collection("drivers_personal_data").doc(driverId);
+      const driverDoc = await driverRef.get();
+
+      if (!driverDoc.exists) {
+          return res.status(404).send({ error: "Driver not found." });
+      }
+
+      const existingDriverData = driverDoc.data();
+
+      // Check if the updated email already exists (if provided)
+      if (updateData.email && updateData.email !== existingDriverData.email) {
+          const existingDriverByEmail = await firestore
+              .collection("drivers_personal_data")
+              .where("email", "==", updateData.email)
+              .get();
+
+          if (!existingDriverByEmail.empty) {
+              return res.status(400).send({ error: "A driver with this email already exists." });
+          }
+      }
+
+      // Update the driver's personal data
+      await driverRef.update(updateData);
+
+      // If vehicle data is included, update the vehicle details
+      if (updateData.whichVehicle || updateData.vehicleNumber || updateData.brand || updateData.model) {
+          const vehicleRef = firestore.collection("drivers_vehicle_data").doc(driverId);
+          await vehicleRef.update(updateData);
+      }
+
+      // Respond with success message
+      res.status(200).send({
+          message: "Driver updated successfully",
+          driverId,
+      });
+  } catch (error) {
+      // Handle errors
+      res.status(500).send({ error: error.message });
+  }
+};
+
+
 module.exports = {
   getAllDrivers,
   getDriverByEmail,
@@ -838,4 +891,5 @@ module.exports = {
   driverLoginByEmail,
   getActiveDriversWithLocation,
   getAllBannedDrivers,
+  updateDriver
 };
