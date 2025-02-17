@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getAllBannedUsers,updateUserPoints,createUser,registerUser,getUserByEmail,loginUser,getAllUsers,deleteUser,loginByPhoneNumber,loginUserByEmail } = require('../controllers/userController');
+const { updateUser,getAllBannedUsers,updateUserPoints,createUser,registerUser,getUserByEmail,loginUser,getAllUsers,deleteUser,loginByPhoneNumber,loginUserByEmail } = require('../controllers/userController');
 const {authenticateToken} = require("../Middleware/Auth")
 
 router.post('/create', createUser);
@@ -27,6 +27,9 @@ router.post('/user-Login-by-email', loginUserByEmail);
 router.put('/update-user-points/:userId', authenticateToken,updateUserPoints );
 
 router.get('/get-all-banned-users', authenticateToken,getAllBannedUsers );
+
+router.put('/update-user-details/:userId',updateUser );
+
 
 
 module.exports = router;

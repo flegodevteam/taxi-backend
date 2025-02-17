@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const {getAllBannedDrivers,getActiveDriversWithLocation,getAllDrivers,getDriverByEmail,deleteDriver,updatePaymentStatus,loginByPhoneNumber ,registerDriver, updateDriverLocation,driverLogin,updateIsAdminApprove,updateIsActive,driverLoginByEmail} = require('../controllers/driverController');
+const {updateDriver,getAllBannedDrivers,getActiveDriversWithLocation,getAllDrivers,getDriverByEmail,deleteDriver,updatePaymentStatus,loginByPhoneNumber ,registerDriver, updateDriverLocation,driverLogin,updateIsAdminApprove,updateIsActive,driverLoginByEmail} = require('../controllers/driverController');
 const {authenticateToken} = require("../Middleware/Auth")
 
 
@@ -8,7 +8,7 @@ const {authenticateToken} = require("../Middleware/Auth")
 router.get('/get-all-drivers', authenticateToken,getAllDrivers);
 
 // Route to get a driver by email
-router.get('/get-driver-by-email/:driverId', authenticateToken,getDriverByEmail);
+router.get('/get-driver-by-driverId/:driverId', authenticateToken,getDriverByEmail);
 
 //delete a driver
 router.delete('/delete-driver/:driverId', authenticateToken,deleteDriver );
@@ -40,6 +40,8 @@ router.post('/driver-Login-by-email', driverLoginByEmail);
 router.get('/get-all-active-drivers',authenticateToken,getActiveDriversWithLocation);
 
 router.get('/get-all-banned-drivers',getAllBannedDrivers);
+
+router.put('/update-driver-details/:driverId',updateDriver);
 
 
 module.exports = router;
