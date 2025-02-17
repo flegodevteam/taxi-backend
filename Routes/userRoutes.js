@@ -28,7 +28,7 @@ router.put('/update-user-points/:userId', authenticateToken,updateUserPoints );
 
 router.get('/get-all-banned-users', authenticateToken,getAllBannedUsers );
 
-router.put('/update-user-details/:userId',updateUser );
+router.put('/update-user-details/:userId',authenticateToken,updateUser );
 
 
 

@@ -41,7 +41,7 @@ router.get('/get-all-active-drivers',authenticateToken,getActiveDriversWithLocat
 
 router.get('/get-all-banned-drivers',getAllBannedDrivers);
 
-router.put('/update-driver-details/:driverId',updateDriver);
+router.put('/update-driver-details/:driverId',authenticateToken,updateDriver);
 
 
 module.exports = router;
