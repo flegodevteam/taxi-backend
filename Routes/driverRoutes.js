@@ -7,7 +7,7 @@ const {authenticateToken} = require("../Middleware/Auth")
 //get all drivers
 router.get('/get-all-drivers', authenticateToken,getAllDrivers);
 
-// Route to get a driver by email
+// Route to get a driver by driverId
 router.get('/get-driver-by-driverId/:driverId', authenticateToken,getDriverByEmail);
 
 //delete a driver

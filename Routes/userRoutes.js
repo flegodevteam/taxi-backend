@@ -8,7 +8,7 @@ router.post('/create', createUser);
 //reg
 router.post('/register', registerUser);
 
-router.get('/get-user-by-email/:userId',authenticateToken,getUserByEmail);
+router.get('/get-user-by-userId/:userId',authenticateToken,getUserByEmail);
 
 // Login route
 router.post('/login', loginUser);

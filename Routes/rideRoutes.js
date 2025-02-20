@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const {getAssignedDriverLocation ,getEndedRidesByUser,getEndedRidesByDriver,getStartedRidesByDriver,getStartedRidesByUser,updateRideCost,getLatestRideByUser,getAllRatings,getRejectedRequests,getAcceptedRequests,getAllRidesByDate,requestRide,getRideRequestsForDriver,handleRideRequest,updateWaitingTime,getRideDetails,updateRideStatus,updateRideRating,getRideRating} = require("../controllers/RideController")
+const {cancelRideRequest,getAssignedDriverLocation ,getEndedRidesByUser,getEndedRidesByDriver,getStartedRidesByDriver,getStartedRidesByUser,updateRideCost,getLatestRideByUser,getAllRatings,getRejectedRequests,getAcceptedRequests,getAllRidesByDate,requestRide,getRideRequestsForDriver,handleRideRequest,updateWaitingTime,getRideDetails,updateRideStatus,updateRideRating,getRideRating} = require("../controllers/RideController")
 const {authenticateToken} = require("../Middleware/Auth")
 
 router.post('/request-ride', authenticateToken,requestRide);
@@ -11,7 +11,7 @@ router.post('/handle-ride-request/:driverId', authenticateToken,handleRideReques
 
 router.put("/update-Waiting-Time/:confirmedRideId",authenticateToken, updateWaitingTime);
 
-router.get("/get-driver-location/:confirmedRideId",getAssignedDriverLocation);
+router.get("/get-driver-location/:confirmedRideId",authenticateToken,getAssignedDriverLocation);
 
 
 router.get('/get-ride-by-rideId/:rideId', authenticateToken,getRideDetails);
@@ -47,6 +47,7 @@ router.get("/get-ended-rides-by-user/:userId", authenticateToken,getEndedRidesBy
 router.get("/get-ended-rides-by-driver/:driverId", authenticateToken,getEndedRidesByDriver);
 
 
+router.post("/cancel-ride/:userId",authenticateToken,cancelRideRequest);
 
 
 module.exports = router;
