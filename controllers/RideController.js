@@ -372,18 +372,18 @@ const requestRide = async (req, res) => {
 const cancelRideRequest = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { latitude, longitude, whichVehicle, destination, phoneNumber } = req.body;
+    // const {  whichVehicle , phoneNumber } = req.body;
 
     const db = admin.firestore();
 
-    console.log("Cancel request for:", { userId, phoneNumber, latitude, longitude, destination, whichVehicle });
+    // console.log("Cancel request for:", { userId, phoneNumber, latitude, longitude, destination, whichVehicle });
 
     const preRideQuery = await db
   .collection("preRideRequest")
   .where("userId", "==", userId)
   // .where("userEmail", "==", userEmail)
-  .where("phoneNumber", "==", phoneNumber)
-  .where("whichVehicle", "==", whichVehicle)
+  // .where("phoneNumber", "==", phoneNumber)
+  // .where("whichVehicle", "==", whichVehicle)
   .where("status", "==", "Processing")
   .get();
 
@@ -1874,12 +1874,14 @@ const getAssignedDriverLocation = async (req, res) => {
     const estimatedTime = (distance / avgSpeed) * 60; // Time in minutes
 
     console.log(`Distance: ${distance.toFixed(2)} km, Estimated Time: ${estimatedTime.toFixed(2)} min`);
+    rounedtime =  Math.round(estimatedTime) + " min"
+
 
     return res.status(200).json({
       message: "Driver location fetched successfully.",
       driverLocation: assignedDriverLocation,
       distance: distance.toFixed(2) + " km",
-      estimatedTime: estimatedTime.toFixed(2) + " min",
+      estimatedTime: rounedtime,
     });
 
   } catch (error) {
