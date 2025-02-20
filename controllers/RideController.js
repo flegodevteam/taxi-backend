@@ -212,7 +212,7 @@ const requestRide = async (req, res) => {
       if (activeDriversSnapshot.empty) {
         console.log("No active drivers found.");
         return res.status(404).send({ message: "No active drivers available." });
-      }
+      } 
 
       const activeApprovedDrivers = activeDriversSnapshot.docs.filter((doc) =>
         approvedDriverEmails.includes(doc.id)
