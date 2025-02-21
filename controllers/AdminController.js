@@ -106,7 +106,7 @@ const loginAdmin = async (req, res) => {
                 userRole: adminData.userRole,
             },
             process.env.JWT_SECRET, // Ensure you have a secret key in environment variables
-            { expiresIn: "1h" } // Token expires in 1 hour
+            { expiresIn: "3h" } // Token expires in 2 hour
         );
 
         // Password is valid, send a success response with the token
