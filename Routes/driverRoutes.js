@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const {updateDriver,getAllBannedDrivers,getActiveDriversWithLocation,getAllDrivers,getDriverByEmail,deleteDriver,updatePaymentStatus,loginByPhoneNumber ,registerDriver, updateDriverLocation,driverLogin,updateIsAdminApprove,updateIsActive,driverLoginByEmail} = require('../controllers/driverController');
+const {updateDriverFcmToken,updateDriver,getAllBannedDrivers,getActiveDriversWithLocation,getAllDrivers,getDriverByEmail,deleteDriver,updatePaymentStatus,loginByPhoneNumber ,registerDriver, updateDriverLocation,driverLogin,updateIsAdminApprove,updateIsActive,driverLoginByEmail} = require('../controllers/driverController');
 const {authenticateToken} = require("../Middleware/Auth")
 
 
@@ -42,6 +42,9 @@ router.get('/get-all-active-drivers',authenticateToken,getActiveDriversWithLocat
 router.get('/get-all-banned-drivers',getAllBannedDrivers);
 
 router.put('/update-driver-details/:driverId',authenticateToken,updateDriver);
+
+router.put('/update-driver-fcmToken/:driverId',authenticateToken,updateDriverFcmToken);
+
 
 
 module.exports = router;

@@ -832,6 +832,39 @@ const updateUser = async (req, res) => {
 };
 
 
+const updateFcmToken = async (req, res) => {
+    try {
+        const { userId } = req.params; // Get userId from URL params
+        const { fcmToken } = req.body; // Get fcmToken from request body
+
+        // Check if required fields are provided
+        if (!userId || !fcmToken) {
+            return res.status(400).send({ error: "User ID and FCM token are required." });
+        }
+
+        // Check if the user exists
+        const userRef = db.collection("users").doc(userId);
+        const userSnapshot = await userRef.get();
+
+        if (!userSnapshot.exists) {
+            return res.status(404).send({ error: "User not found." });
+        }
+
+        // Update FCM token in Firestore
+        await userRef.update({ fcmToken });
+
+        // Update FCM token in Realtime Database
+        const fcmTokenPath = `users_tokens/${userId}`;
+        await realtimeDb.ref(fcmTokenPath).set(fcmToken);
+
+        // Respond with success
+        res.status(200).send({ message: "FCM token updated successfully." });
+    } catch (error) {
+        res.status(500).send({ error: error.message });
+    }
+};
+
+
 module.exports = {
     createUser,
     registerUser,
@@ -843,5 +876,6 @@ module.exports = {
     loginUserByEmail,
     updateUserPoints,
     getAllBannedUsers,
-    updateUser
+    updateUser,
+    updateFcmToken
 };

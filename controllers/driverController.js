@@ -875,6 +875,37 @@ const updateDriver = async (req, res) => {
   }
 };
 
+const updateDriverFcmToken = async (req, res) => {
+  try {
+      const { driverId } = req.params; // Get driverId from URL params
+      const { fcmToken } = req.body; // Get fcmToken from request body
+
+      // Check if required fields are provided
+      if (!driverId || !fcmToken) {
+          return res.status(400).send({ error: "Driver ID and FCM token are required." });
+      }
+
+      // Check if the driver exists
+      const driverRef = firestore.collection("drivers_personal_data").doc(driverId);
+      const driverSnapshot = await driverRef.get();
+
+      if (!driverSnapshot.exists) {
+          return res.status(404).send({ error: "Driver not found." });
+      }
+
+      // Update FCM token in Firestore
+      await driverRef.update({ fcmToken });
+
+      // Update FCM token in Realtime Database
+      const fcmTokenPath = `drivers_tokens/${driverId}`;
+      await realtimeDb.ref(fcmTokenPath).set(fcmToken);
+
+      // Respond with success
+      res.status(200).send({ message: "FCM token updated successfully." });
+  } catch (error) {
+      res.status(500).send({ error: error.message });
+  }
+};
 
 module.exports = {
   getAllDrivers,
@@ -891,5 +922,6 @@ module.exports = {
   driverLoginByEmail,
   getActiveDriversWithLocation,
   getAllBannedDrivers,
-  updateDriver
+  updateDriver,
+  updateDriverFcmToken
 };

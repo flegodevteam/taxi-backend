@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { updateUser,getAllBannedUsers,updateUserPoints,createUser,registerUser,getUserByEmail,loginUser,getAllUsers,deleteUser,loginByPhoneNumber,loginUserByEmail } = require('../controllers/userController');
+const {updateFcmToken, updateUser,getAllBannedUsers,updateUserPoints,createUser,registerUser,getUserByEmail,loginUser,getAllUsers,deleteUser,loginByPhoneNumber,loginUserByEmail } = require('../controllers/userController');
 const {authenticateToken} = require("../Middleware/Auth")
 
 router.post('/create', createUser);
@@ -29,6 +29,8 @@ router.put('/update-user-points/:userId', authenticateToken,updateUserPoints );
 router.get('/get-all-banned-users', authenticateToken,getAllBannedUsers );
 
 router.put('/update-user-details/:userId',authenticateToken,updateUser );
+
+router.put('/update-user-fcmToken/:userId',authenticateToken,updateFcmToken );
 
 
 
