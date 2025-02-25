@@ -2164,7 +2164,28 @@ const fetchAllPreRideRequests = async (req, res) => {
   }
 };
 
+ 
 
+const getAllRides = async (req, res) => {
+  try {
+    const ridesRef = admin.firestore().collection("rides");
+    const snapshot = await ridesRef.get();
+
+    if (snapshot.empty) {
+      return res.status(404).json({ message: "No rides found." });
+    }
+
+    const rides = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const count = rides.length;
+
+    return res.status(200).json({ rides,count  });
+  } catch (error) {
+    console.error("Error fetching all rides:", error);
+    return res
+      .status(500)
+      .json({ error: "Internal server error. Please try again later." });
+  }
+};
 module.exports = {
   getAcceptedRequests,
   requestRide,
@@ -2188,5 +2209,6 @@ module.exports = {
   getEndedRidesByDriver,
   getEndedRidesByUser,
   cancelRideRequest,
-  fetchAllPreRideRequests
+  fetchAllPreRideRequests,
+  getAllRides
 };
