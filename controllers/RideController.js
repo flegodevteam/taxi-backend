@@ -2164,6 +2164,8 @@ const fetchAllPreRideRequests = async (req, res) => {
   }
 };
 
+ 
+
 const getAllRides = async (req, res) => {
   try {
     const ridesRef = admin.firestore().collection("rides");
@@ -2184,7 +2186,6 @@ const getAllRides = async (req, res) => {
       .json({ error: "Internal server error. Please try again later." });
   }
 };
-
 module.exports = {
   getAcceptedRequests,
   requestRide,
