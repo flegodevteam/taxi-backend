@@ -1690,22 +1690,119 @@ const updateRideRating = async (req, res) => {
         });
     }
 
-    // Update the 'ratings' field in the matching document
-    querySnapshot.forEach(async (doc) => {
-      await doc.ref.update({ ratings });
-      console.log(
-        `Ratings updated successfully for ride with ID: ${confirmedRideId}`
-      );
-    });
+    let driverId;
+    
+    // Update the 'ratings' field in the matching document and get driverId
+    await Promise.all(
+      querySnapshot.docs.map(async (doc) => {
+        driverId = doc.data().driverId; // Extract driverId
+        await doc.ref.update({ ratings });
+      })
+    );
 
-    return res.status(200).json({ message: "Ratings updated successfully." });
+    if (!driverId) {
+      return res.status(400).json({ message: "Driver ID not found in ride data." });
+    }
+
+    // Reference to the driver's personal data collection
+    const driverRef = admin
+      .firestore()
+      .collection("drivers_personal_data")
+      .doc(driverId);
+
+    const driverDoc = await driverRef.get();
+
+    if (!driverDoc.exists) {
+      return res.status(404).json({ message: "Driver not found." });
+    }
+
+    const currentPoints = driverDoc.data().Points || 0; // Default to 0 if not set
+    const updatedPoints = currentPoints + ratings; // Add new ratings to Points
+
+    // Update driver's Points
+    await driverRef.update({ Points: updatedPoints });
+
+    return res.status(200).json({
+      message: "Ratings and driver Points updated successfully.",
+      driverId,
+      updatedPoints,
+    });
   } catch (error) {
-    console.error("Error updating ratings:", error);
+    console.error("Error updating ratings and Points:", error);
     return res
       .status(500)
       .json({ message: "An error occurred while updating ratings.", error });
   }
 };
+
+const updateUserPoints = async (req, res) => {
+  try {
+    const { confirmedRideId } = req.params; // Get confirmedRideId from req.params
+    const { ratings } = req.body; // Get ratings from req.body
+
+    if (!confirmedRideId || ratings === undefined) {
+      return res
+        .status(400)
+        .json({ message: "confirmedRideId and ratings are required." });
+    }
+
+    // Reference to the 'rides' collection
+    const ridesRef = admin.firestore().collection("rides");
+
+    // Query for the document with the specific 'confirmedRideId'
+    const querySnapshot = await ridesRef
+      .where("confirmedRideId", "==", confirmedRideId)
+      .get();
+
+    if (querySnapshot.empty) {
+      return res
+        .status(404)
+        .json({
+          message: `No ride found with confirmedRideId: ${confirmedRideId}`,
+        });
+    }
+
+    let userId;
+
+    // Get userId from the ride document and update ratings
+    await Promise.all(
+      querySnapshot.docs.map(async (doc) => {
+        userId = doc.data().userId; // Extract userId
+        await doc.ref.update({ ratings });
+      })
+    );
+
+    if (!userId) {
+      return res.status(400).json({ message: "User ID not found in ride data." });
+    }
+
+    // Reference to the user's personal data collection
+    const userRef = admin.firestore().collection("users").doc(userId);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const currentPoints = userDoc.data().Points || 0; // Default to 0 if not set
+    const updatedPoints = currentPoints + ratings; // Add new ratings to Points
+
+    // Update user's Points
+    await userRef.update({ points: updatedPoints });
+
+    return res.status(200).json({
+      message: "Ratings and user Points updated successfully.",
+      userId,
+      updatedPoints,
+    });
+  } catch (error) {
+    console.error("Error updating ratings and Points:", error);
+    return res
+      .status(500)
+      .json({ message: "An error occurred while updating ratings.", error });
+  }
+};
+
 
 const getRideRating = async (req, res) => {
   try {
@@ -2210,5 +2307,6 @@ module.exports = {
   getEndedRidesByUser,
   cancelRideRequest,
   fetchAllPreRideRequests,
-  getAllRides
+  getAllRides,
+  updateUserPoints
 };
