@@ -16,12 +16,14 @@ const sendRideRequest = async (driverId, rideDetails) => {
       throw new Error(`Vehicle type is undefined for driver ${driverId}`);
     }
 
-    const { fullCost } = await calculateFullCost2({
-      pickup_location: rideDetails.currentLocation,
-      dropped_location: rideDetails.destinationLocation,
-      vehicle_type: rideDetails.whichVehicle,
-      waiting_time: 0,
-    });
+    // const { fullCost } = await calculateFullCost2({
+    //   pickup_location: rideDetails.currentLocation,
+    //   dropped_location: rideDetails.destinationLocation,
+    //   vehicle_type: rideDetails.whichVehicle,
+    //   waiting_time: 0,
+    // });
+
+    
     const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY; 
 
    // Function to validate latitude & longitude
@@ -71,6 +73,13 @@ const getGoogleMapsDistance = async (rideDetails) => {
     // Await the result of getGoogleMapsDistance to resolve the promise
     const distance = await getGoogleMapsDistance(rideDetails);  // Awaiting the distance here
     //const distance = 0; 
+    const distanceInKm = distance.toFixed(2)
+    const { fullCost } = await calculateFullCost2({
+      distanceInKm,
+      vehicle_type: rideDetails.whichVehicle,
+      waiting_time: 0,
+    });
+
     console.log(`Calculated cost for ride: ${fullCost} (distance: ${distance.toFixed(2)} km)`);  // Now you have the actual value
 
     // Push the ride request details into Realtime Database
@@ -998,6 +1007,27 @@ const cancelRideRequest = async (req, res) => {
 const db = admin.database();
 
 
+const getDriverName = async (driverId) => {
+  try {
+    const driverRef = admin
+      .firestore()
+      .collection("drivers_personal_data")
+      .doc(driverId);
+    const driverDoc = await driverRef.get();
+
+    if (!driverDoc.exists) {
+      console.log(`No driver found with ID: ${driverId}`);
+      return null;
+    }
+
+    const driverData = driverDoc.data();
+    const driverName = `${driverData.firstName} ${driverData.lastName}`;
+    return driverName;
+  } catch (error) {
+    console.error("Error fetching driver details:", error);
+    return null;
+  }
+};
 
 const handleRideRequest = async (req, res) => {
     const { driverId } = req.params;
@@ -1084,7 +1114,8 @@ const handleRideRequest = async (req, res) => {
             }
           }
         }
-  
+        const driverName = await getDriverName(correctRideRequest.driverId);
+
         // Step 3: Save the accepted ride as a new document in Firestore
         const rideDataToSave = {
           confirmedRideId: rideId,
@@ -1092,6 +1123,8 @@ const handleRideRequest = async (req, res) => {
           vehicle_type: correctRideRequest.vehicle_type,
           driverId: correctRideRequest.driverId,
           pickupLocation: correctRideRequest.currentLocation,
+          destinationLocation:correctRideRequest.destinationLocation,
+          driverName: driverName || "Unknown Driver",
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           rideStatus: "driver accepted",
           rideStartedLocation: null,
@@ -1368,7 +1401,7 @@ const getRideRequestsForDriver = (ws, driverId) => {
 
   const db = admin.database();
   db.ref("ride_requests").once("value", (requestsSnapshot) => {
-    console.log("Ride requests snapshot:", requestsSnapshot.val()); // Debugging log
+   // console.log("Ride requests snapshot:", requestsSnapshot.val()); // Debugging log
 
     if (!requestsSnapshot.exists()) {
       ws.send(JSON.stringify({ message: "No ride requests found." }));
@@ -1388,6 +1421,8 @@ const getRideRequestsForDriver = (ws, driverId) => {
         });
       }
     });
+
+    console.log("requestsSnapshot",requestsSnapshot)
 
     if (driverRideRequests.length === 0) {
       ws.send(JSON.stringify({ message: `No pending ride requests for driver: ${driverId}.` }));
@@ -1902,6 +1937,7 @@ const getLatestRideByUser = async (userId) => {
     if (querySnapshot.empty) {
       return null;
     }
+    
 
     return querySnapshot.docs[0].data();
   } catch (error) {
@@ -1993,6 +2029,8 @@ const getStartedRidesByUser = async (req, res) => {
     querySnapshot.forEach(doc => {
       rides.push({ id: doc.id, ...doc.data() });
     });
+
+    console.log("rides",rides)
 
     return res.status(200).json({
       message: "Started rides fetched successfully.",
