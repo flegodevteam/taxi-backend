@@ -68,25 +68,22 @@ const calculateFullCost = async (req, res) => {
 };
 
 const calculateFullCost2 = async (params) => {
+  console.log("params", params);
+
   try {
-    const { pickup_location, dropped_location, vehicle_type, waiting_time } = params;
+    const { distanceInKm, vehicle_type, waiting_time } = params;
 
     // Validate input fields
-    if (!pickup_location || !dropped_location || !vehicle_type || waiting_time == null) {
+    if (distanceInKm == null || !vehicle_type || waiting_time == null) {
       throw new Error("All fields are required.");
     }
 
-    // Calculate the distance between pickup and dropped locations in kilometers
-    const distanceInMeters = geolib.getDistance(
-      { latitude: pickup_location.latitude, longitude: pickup_location.longitude },
-      { latitude: dropped_location.latitude, longitude: dropped_location.longitude }
-    );
-    const distanceInKm = distanceInMeters / 1000;
+    console.log("distanceInKm", distanceInKm);
 
     // Fetch vehicle package details based on vehicle_type
     const packageSnapshot = await firestore
-      .collection('vehicle_packages')
-      .where('vehicle_type', '==', vehicle_type)
+      .collection("vehicle_packages")
+      .where("vehicle_type", "==", vehicle_type)
       .get();
 
     if (packageSnapshot.empty) {
@@ -94,27 +91,41 @@ const calculateFullCost2 = async (params) => {
     }
 
     const vehiclePackage = packageSnapshot.docs[0].data();
-    const { first_3km_cost, after_cost, waiting_time_cost } = vehiclePackage;
 
-    // Calculate the full cost
+    console.log("vehiclePackage", vehiclePackage);
+
+    // Convert string values to numbers for calculations
+    const first_3km_cost = Number(vehiclePackage.first_3km_cost);
+    const after_cost = Number(vehiclePackage.after_cost);
+    const waiting_time_cost = Number(vehiclePackage.waiting_time_cost);
+    const numericDistance = Number(distanceInKm);
+    const numericWaitingTime = Number(waiting_time);
+
+    // Check if any conversion resulted in NaN
+    if (isNaN(first_3km_cost) || isNaN(after_cost) || isNaN(waiting_time_cost) || isNaN(numericDistance) || isNaN(numericWaitingTime)) {
+      throw new Error("Invalid numeric values detected in vehicle package or parameters.");
+    }
+
     let fullCost = 0;
 
     // Cost for the first 3km
-    if (distanceInKm <= 3) {
+    if (numericDistance <= 3) {
       fullCost += first_3km_cost;
     } else {
-      fullCost += first_3km_cost;
-      const remainingDistance = distanceInKm - 3;
-      fullCost += Math.ceil(remainingDistance) * after_cost;
+      fullCost += first_3km_cost; // First 3km cost
+      const remainingDistance = numericDistance - 3;
+      fullCost += Math.ceil(remainingDistance) * after_cost; // Cost for extra km
     }
 
     // Add waiting time cost
-    const waitingCost = (waiting_time / 60) * waiting_time_cost;
+    const waitingCost = (numericWaitingTime / 60) * waiting_time_cost;
     fullCost += waitingCost;
+
+    console.log("fullCost", fullCost); // This should now correctly log 9946
 
     // Return the calculated cost
     return {
-      distance: distanceInKm,
+      distance: numericDistance,
       fullCost: fullCost,
     };
   } catch (error) {
@@ -122,6 +133,8 @@ const calculateFullCost2 = async (params) => {
     throw error; // Re-throw the error for handling in the calling function
   }
 };
+
+
 
 module.exports = {
   calculateFullCost,calculateFullCost2
