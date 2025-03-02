@@ -1,5 +1,5 @@
 const admin = require("firebase-admin");
-const credentials = require("../key.json");
+// const credentials = require("../key.json");
 require("dotenv").config();
 
 const serviceAccount = {
@@ -8,11 +8,12 @@ const serviceAccount = {
   clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
 };
 
-// Initialize Firebase Admin SDK with your credentials
+
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://taxia-new-default-rtdb.firebaseio.com"
+  databaseURL: "https://taxia-cca4b-default-rtdb.firebaseio.com"
 });
+
 
 // Firestore reference
 const firestore = admin.firestore();
