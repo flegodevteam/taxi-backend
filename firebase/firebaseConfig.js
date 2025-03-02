@@ -1,12 +1,19 @@
 const admin = require("firebase-admin");
-const credentials = require("../key.json");
+// const credentials = require("../key.json");
 require("dotenv").config();
 
-// Initialize Firebase Admin SDK with your credentials
+const serviceAccount = {
+  projectId: process.env.FIREBASE_PROJECT_ID,
+  privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'), // Ensure newlines are handled correctly
+  clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+};
+
+
 admin.initializeApp({
-  credential: admin.credential.cert(credentials),
+  credential: admin.credential.cert(serviceAccount),
   databaseURL: "https://taxia-cca4b-default-rtdb.firebaseio.com"
 });
+
 
 // Firestore reference
 const firestore = admin.firestore();
