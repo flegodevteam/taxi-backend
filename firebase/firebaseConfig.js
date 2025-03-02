@@ -5,7 +5,7 @@ require("dotenv").config();
 // Initialize Firebase Admin SDK with your credentials
 admin.initializeApp({
   credential: admin.credential.cert(credentials),
-  databaseURL: "https://taxia-cca4b-default-rtdb.firebaseio.com"
+  databaseURL: "https://taxia-new-default-rtdb.firebaseio.com"
 });
 
 // Firestore reference
