@@ -85,6 +85,9 @@ const getGoogleMapsDistance = async (rideDetails) => {
     // Push the ride request details into Realtime Database
     const rideRequestsRef = realtimeDb.ref(`ride_requests/${driverId}`);
 
+    const userName = await getUserName(rideDetails.userId);
+
+    console.log("user name",userName)
     await rideRequestsRef.push({
       rideId: rideDetails.rideId,
       currentLocation: rideDetails.currentLocation,
@@ -95,6 +98,7 @@ const getGoogleMapsDistance = async (rideDetails) => {
       //userEmail: rideDetails.userEmail,
       vehicle_type: rideDetails.whichVehicle, // Ensure this is not undefined
       userMobile: rideDetails.phoneNumber,
+      userName:userName,
       userId: rideDetails.userId,
       cost: fullCost,
       distance: distance.toFixed(2), // Store the distance in km
@@ -145,6 +149,29 @@ const getGoogleMapsDistance = async (rideDetails) => {
     throw new Error("Error sending ride request: " + error.message);
   }
 };
+
+const getUserName = async (userId) => {
+  try {
+    const userRef = admin
+      .firestore()
+      .collection("users")
+      .doc(userId);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      console.log(`No user found with ID: ${userId}`);
+      return null;
+    }
+
+    const userData = userDoc.data();
+    const userName = `${userData.firstName} ${userData.lastName}`;
+    return userName;
+  } catch (error) {
+    console.error("Error fetching user details:", error);
+    return null;
+  }
+};
+
 
 
 // const requestRide = async (req, res) => {
