@@ -86,8 +86,9 @@ const getGoogleMapsDistance = async (rideDetails) => {
     const rideRequestsRef = realtimeDb.ref(`ride_requests/${driverId}`);
 
     const userName = await getUserName(rideDetails.userId);
+    const userMobileNumber = await getUserMobile(rideDetails.userId);
 
-    console.log("user name",userName)
+    console.log("user userMobileNumber",userMobileNumber)
     await rideRequestsRef.push({
       rideId: rideDetails.rideId,
       currentLocation: rideDetails.currentLocation,
@@ -97,7 +98,7 @@ const getGoogleMapsDistance = async (rideDetails) => {
       driverId: driverId,
       //userEmail: rideDetails.userEmail,
       vehicle_type: rideDetails.whichVehicle, // Ensure this is not undefined
-      userMobile: rideDetails.phoneNumber,
+      userMobile: userMobileNumber,
       userName:userName,
       userId: rideDetails.userId,
       cost: fullCost,
@@ -171,7 +172,27 @@ const getUserName = async (userId) => {
     return null;
   }
 };
+const getUserMobile = async (userId) => {
+  try {
+    const userRef = admin
+      .firestore()
+      .collection("users")
+      .doc(userId);
+    const userDoc = await userRef.get();
 
+    if (!userDoc.exists) {
+      console.log(`No user found with ID: ${userId}`);
+      return null;
+    }
+
+    const userData = userDoc.data();
+    const userMobile =userData.phoneNumber;
+    return userMobile;
+  } catch (error) {
+    console.error("Error fetching user details:", error);
+    return null;
+  }
+};
 
 
 // const requestRide = async (req, res) => {
@@ -1055,6 +1076,29 @@ const getDriverName = async (driverId) => {
     return null;
   }
 };
+const getDriverMobileNo = async (driverId) => {
+  try {
+    const driverRef = admin
+      .firestore()
+      .collection("drivers_personal_data")
+      .doc(driverId);
+    const driverDoc = await driverRef.get();
+
+    if (!driverDoc.exists) {
+      console.log(`No driver found with ID: ${driverId}`);
+      return null;
+    }
+
+    const driverData = driverDoc.data();
+    const driverMobile = driverData.telephone;
+    return driverMobile;
+  } catch (error) {
+    console.error("Error fetching driver details:", error);
+    return null;
+  }
+};
+
+
 
 const handleRideRequest = async (req, res) => {
     const { driverId } = req.params;
@@ -1142,7 +1186,7 @@ const handleRideRequest = async (req, res) => {
           }
         }
         const driverName = await getDriverName(correctRideRequest.driverId);
-
+        const driverMobile = await getDriverMobileNo(correctRideRequest.driverId);
         // Step 3: Save the accepted ride as a new document in Firestore
         const rideDataToSave = {
           confirmedRideId: rideId,
@@ -1152,6 +1196,7 @@ const handleRideRequest = async (req, res) => {
           pickupLocation: correctRideRequest.currentLocation,
           destinationLocation:correctRideRequest.destinationLocation,
           driverName: driverName || "Unknown Driver",
+          driverMobileNo:driverMobile,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           rideStatus: "driver accepted",
           rideStartedLocation: null,
@@ -2215,6 +2260,10 @@ const getAssignedDriverLocation = async (req, res) => {
     const rideData = rideSnapshot.docs[0].data();
     console.log("Ride Data:", rideData);
 
+    const rideStatus = rideData.rideStatus
+
+    console.log("rideStatus",rideData.rideStatus)
+
     const driverId = rideData.driverId;
     if (!driverId) {
       return res.status(404).json({ message: "Driver ID not found in ride data." });
@@ -2278,6 +2327,7 @@ const getAssignedDriverLocation = async (req, res) => {
       driverLocation: assignedDriverLocation,
       distance: distance.toFixed(2) + " km",
       estimatedTime: rounedtime,
+      rideStatus:rideStatus
     });
 
   } catch (error) {
