@@ -1994,9 +1994,18 @@ const getAllRatings = async (req, res) => {
   }
 };
 
-const getLatestRideByUser = async (userId) => {
+const getLatestRideByUser = async (req, res) => {
   try {
-    if (!userId) throw new Error("Missing userId in the request.");
+    const { userId } = req.params; // Extract userId from URL params
+
+    if (!userId) {
+      return res.status(400).json({ error: "Missing userId in request parameters." });
+    }
+
+    if (typeof userId !== "string") {
+      console.error("Invalid userId received:", userId);
+      return res.status(400).json({ error: "Invalid userId. Expected a string." });
+    }
 
     console.log(`Fetching ride details for userId: ${userId}`);
 
@@ -2007,16 +2016,18 @@ const getLatestRideByUser = async (userId) => {
       .get();
 
     if (querySnapshot.empty) {
-      return null;
+      return res.status(404).json({ message: "No ride found for this user." });
     }
-    
 
-    return querySnapshot.docs[0].data();
+    return res.status(200).json(querySnapshot.docs[0].data());
   } catch (error) {
     console.error("Error fetching ride details:", error);
-    throw new Error("Failed to fetch ride details.");
+    return res.status(500).json({ error: "Failed to fetch ride details." });
   }
 };
+
+
+
 
 
 const updateRideCost = async (req, res) => {
