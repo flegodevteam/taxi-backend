@@ -2409,6 +2409,120 @@ const getAllRides = async (req, res) => {
       .json({ error: "Internal server error. Please try again later." });
   }
 };
+
+const getMostLatestRideByUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({ error: "User ID is required." });
+    }
+
+    console.log(`Fetching latest ride for userId: ${userId}`);
+
+    const ridesCollection = admin.firestore().collection("rides");
+
+    // Query for rides that match the given userId
+    const querySnapshot = await ridesCollection.where("userId", "==", userId).get();
+
+    if (querySnapshot.empty) {
+      return res.status(404).json({ message: "No rides found for the provided userId." });
+    }
+
+    let latestRide = null;
+
+    querySnapshot.forEach((doc) => {
+      const ride = doc.data();
+      ride.id = doc.id;
+      
+      // Determine the latest ride based on timestamps
+      const latestTimestamp = latestRide
+        ? Math.max(
+            latestRide.rideEndedTime?.toMillis() || 0,
+            latestRide.rideStartedTime?.toMillis() || 0,
+            latestRide.createdAt?.toMillis() || 0
+          )
+        : 0;
+
+      const currentTimestamp = Math.max(
+        ride.rideEndedTime?.toMillis() || 0,
+        ride.rideStartedTime?.toMillis() || 0,
+        ride.createdAt?.toMillis() || 0
+      );
+
+      if (!latestRide || currentTimestamp > latestTimestamp) {
+        latestRide = ride;
+      }
+    });
+
+    if (!latestRide) {
+      return res.status(404).json({ message: "No valid rides found." });
+    }
+
+    return res.status(200).json({ message: "Latest ride fetched successfully.", latestRide });
+  } catch (error) {
+    console.error("Error fetching latest ride:", error);
+    return res.status(500).json({ error: "Internal server error." });
+  }
+};
+
+const getMostLatestRideByDriver = async (req, res) => {
+  try {
+    const { driverId } = req.params;
+
+    if (!driverId) {
+      return res.status(400).json({ error: "Driver ID is required." });
+    }
+
+    console.log(`Fetching latest ride for driverId: ${driverId}`);
+
+    const ridesCollection = admin.firestore().collection("rides");
+
+    // Query for rides that match the given driverId
+    const querySnapshot = await ridesCollection.where("driverId", "==", driverId).get();
+
+    if (querySnapshot.empty) {
+      return res.status(404).json({ message: "No rides found for the provided driverId." });
+    }
+
+    let latestRide = null;
+
+    querySnapshot.forEach((doc) => {
+      const ride = doc.data();
+      ride.id = doc.id;
+      
+      // Determine the latest ride based on timestamps
+      const latestTimestamp = latestRide
+        ? Math.max(
+            latestRide.rideEndedTime?.toMillis() || 0,
+            latestRide.rideStartedTime?.toMillis() || 0,
+            latestRide.createdAt?.toMillis() || 0
+          )
+        : 0;
+
+      const currentTimestamp = Math.max(
+        ride.rideEndedTime?.toMillis() || 0,
+        ride.rideStartedTime?.toMillis() || 0,
+        ride.createdAt?.toMillis() || 0
+      );
+
+      if (!latestRide || currentTimestamp > latestTimestamp) {
+        latestRide = ride;
+      }
+    });
+
+    if (!latestRide) {
+      return res.status(404).json({ message: "No valid rides found." });
+    }
+
+    return res.status(200).json({ message: "Latest ride fetched successfully.", latestRide });
+  } catch (error) {
+    console.error("Error fetching latest ride:", error);
+    return res.status(500).json({ error: "Internal server error." });
+  }
+};
+
+
 module.exports = {
   getAcceptedRequests,
   requestRide,
@@ -2434,5 +2548,7 @@ module.exports = {
   cancelRideRequest,
   fetchAllPreRideRequests,
   getAllRides,
-  updateUserPoints
+  updateUserPoints,
+  getMostLatestRideByUser,
+  getMostLatestRideByDriver
 };
