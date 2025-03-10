@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const {updateUserPoints,getAllRides,fetchAllPreRideRequests,cancelRideRequest,getAssignedDriverLocation ,getEndedRidesByUser,getEndedRidesByDriver,getStartedRidesByDriver,getStartedRidesByUser,updateRideCost,getLatestRideByUser,getAllRatings,getRejectedRequests,getAcceptedRequests,getAllRidesByDate,requestRide,getRideRequestsForDriver,handleRideRequest,updateWaitingTime,getRideDetails,updateRideStatus,updateRideRating,getRideRating} = require("../controllers/RideController")
+const {getMostLatestRideByDriver,getMostLatestRideByUser,updateUserPoints,getAllRides,fetchAllPreRideRequests,cancelRideRequest,getAssignedDriverLocation ,getEndedRidesByUser,getEndedRidesByDriver,getStartedRidesByDriver,getStartedRidesByUser,updateRideCost,getLatestRideByUser,getAllRatings,getRejectedRequests,getAcceptedRequests,getAllRidesByDate,requestRide,getRideRequestsForDriver,handleRideRequest,updateWaitingTime,getRideDetails,updateRideStatus,updateRideRating,getRideRating} = require("../controllers/RideController")
 const {authenticateToken} = require("../Middleware/Auth")
 
 router.post('/request-ride', authenticateToken,requestRide);
@@ -58,6 +58,13 @@ router.put("/add-user-ratings/:confirmedRideId", authenticateToken,updateUserPoi
 
 
 router.get("/get-all-rides",authenticateToken,getAllRides);
+
+
+router.get("/get-latest-ride-by-user/:userId",authenticateToken,getMostLatestRideByUser);
+
+router.get("/get-latest-ride-by-driver/:driverId",authenticateToken,getMostLatestRideByDriver);
+
+
 
 
 module.exports = router;
