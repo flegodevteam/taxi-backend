@@ -2474,7 +2474,7 @@ const getMostLatestRideByDriver = async (req, res) => {
       return res.status(400).json({ error: "Driver ID is required." });
     }
 
-    console.log(`Fetching latest ride for driverId: ${driverId}`);
+ 
 
     const ridesCollection = admin.firestore().collection("rides");
 
