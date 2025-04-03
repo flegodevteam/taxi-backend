@@ -2522,6 +2522,36 @@ const getMostLatestRideByDriver = async (req, res) => {
   }
 };
 
+const getAllRideRequests = async (req, res) => {
+  try {
+    // Reference to the 'ride_requests' in the Realtime Database
+    const rideRequestsRef = realtimeDb.ref('ride_requests');
+    
+    // Fetch all ride requests from the database
+    const snapshot = await rideRequestsRef.once('value');
+    
+    if (!snapshot.exists()) {
+      return res.status(404).send({ message: "No ride requests found." });
+    }
+    
+    // Extract ride requests data
+    const rideRequests = [];
+    snapshot.forEach((childSnapshot) => {
+      rideRequests.push(childSnapshot.val()); // Push each ride request data into an array
+    });
+
+    return res.status(200).json({
+      message: "All ride requests fetched successfully.",
+      rideRequests: rideRequests
+    });
+
+  } catch (error) {
+    console.error("Error fetching all ride requests:", error.message);
+    return res.status(500).send({ error: error.message });
+  }
+};
+
+
 
 module.exports = {
   getAcceptedRequests,
@@ -2550,5 +2580,6 @@ module.exports = {
   getAllRides,
   updateUserPoints,
   getMostLatestRideByUser,
-  getMostLatestRideByDriver
+  getMostLatestRideByDriver,
+  getAllRideRequests
 };
