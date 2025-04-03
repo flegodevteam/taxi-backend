@@ -2552,6 +2552,83 @@ const getAllRideRequests = async (req, res) => {
 };
 
 
+const getStartedRidesByDriverLast = async (req, res) => {
+  try {
+    const { driverId } = req.params; // Extract driverId from the URL parameters
+
+    if (!driverId) {
+      return res.status(400).json({ error: "Driver ID is required." });
+    }
+
+    console.log(`Fetching started rides for driverId: ${driverId}`);
+
+    // Reference to the rides collection in Firestore
+    const ridesCollection = admin.firestore().collection("rides");
+
+    // Query for rides that match the given driverId and have a rideStatus of "started"
+    const querySnapshot = await ridesCollection
+      .where("driverId", "==", driverId)
+      .where("rideStatus", "==", "started")
+      .get();
+
+    if (querySnapshot.empty) {
+      return res.status(404).json({
+        message: "No started rides found for the provided driverId.",
+      });
+    }
+
+    // Map through the results and collect ride data
+    const rides = [];
+    querySnapshot.forEach(doc => {
+      rides.push({ id: doc.id, ...doc.data() });
+    });
+
+    return res.status(200).json({
+      message: "Started rides fetched successfully.",
+      rides,
+    });
+  } catch (error) {
+    console.error("Error fetching started rides:", error);
+    return res.status(500).json({ error: "Internal server error." });
+  }
+};
+
+const getAllStartedRides = async (req, res) => {
+  try {
+    console.log("Fetching all started rides...");
+
+    // Reference to the rides collection in Firestore
+    const ridesCollection = admin.firestore().collection("rides");
+
+    // Query for rides that have a rideStatus of "started"
+    const querySnapshot = await ridesCollection
+      .where("rideStatus", "==", "started")
+      .get();
+
+    if (querySnapshot.empty) {
+      return res.status(404).json({
+        message: "No started rides found.",
+      });
+    }
+
+    // Map through the results and collect ride data
+    const rides = [];
+    querySnapshot.forEach(doc => {
+      rides.push({ id: doc.id, ...doc.data() });
+    });
+
+    return res.status(200).json({
+      message: "All started rides fetched successfully.",
+      rides,
+    });
+  } catch (error) {
+    console.error("Error fetching started rides:", error);
+    return res.status(500).json({ error: "Internal server error." });
+  }
+};
+
+
+
 
 module.exports = {
   getAcceptedRequests,
@@ -2581,5 +2658,7 @@ module.exports = {
   updateUserPoints,
   getMostLatestRideByUser,
   getMostLatestRideByDriver,
-  getAllRideRequests
+  getAllRideRequests,
+  getStartedRidesByDriverLast,
+  getAllStartedRides
 };
