@@ -5,7 +5,10 @@ const {
   getVehiclePackageById,
   updateVehiclePackage,
   deleteVehiclePackage,
-  getVehiclePackageByVehicleType
+  getVehiclePackageByVehicleType,
+  getAvailableVehicleTypes,
+  addVehicleType,
+  addAllVehicleTypes
 } = require("../controllers/vehicleController");
 const {authenticateToken} = require("../Middleware/Auth")
 
@@ -28,6 +31,13 @@ router.put("/vehicle-packages/:id", authenticateToken,updateVehiclePackage);
 router.delete("/vehicle-packages/:id",authenticateToken, deleteVehiclePackage);
 
 router.get("/vehicle-packages-by-vehicle/:vehicle_type",getVehiclePackageByVehicleType);
+
+// Get available vehicle types
+router.get("/vehicle-types", authenticateToken, getAvailableVehicleTypes);
+
+router.post('/add-vehicle-type', authenticateToken, addVehicleType);
+
+router.post('/add-all-vehicle-types', authenticateToken, addAllVehicleTypes);
 
 
 module.exports = router;
