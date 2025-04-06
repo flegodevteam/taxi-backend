@@ -2522,6 +2522,34 @@ const getMostLatestRideByDriver = async (req, res) => {
   }
 };
 
+// const getAllRideRequests = async (req, res) => {
+//   try {
+//     // Reference to the 'ride_requests' in the Realtime Database
+//     const rideRequestsRef = realtimeDb.ref('ride_requests');
+    
+//     // Fetch all ride requests from the database
+//     const snapshot = await rideRequestsRef.once('value');
+    
+//     if (!snapshot.exists()) {
+//       return res.status(404).send({ message: "No ride requests found." });
+//     }
+    
+//     // Extract ride requests data
+//     const rideRequests = [];
+//     snapshot.forEach((childSnapshot) => {
+//       rideRequests.push(childSnapshot.val()); // Push each ride request data into an array
+//     });
+
+//     return res.status(200).json({
+//       message: "All ride requests fetched successfully.",
+//       rideRequests: rideRequests
+//     });
+
+//   } catch (error) {
+//     console.error("Error fetching all ride requests:", error.message);
+//     return res.status(500).send({ error: error.message });
+//   }
+// };
 const getAllRideRequests = async (req, res) => {
   try {
     // Reference to the 'ride_requests' in the Realtime Database
@@ -2530,19 +2558,17 @@ const getAllRideRequests = async (req, res) => {
     // Fetch all ride requests from the database
     const snapshot = await rideRequestsRef.once('value');
     
-    if (!snapshot.exists()) {
-      return res.status(404).send({ message: "No ride requests found." });
-    }
-    
-    // Extract ride requests data
     const rideRequests = [];
-    snapshot.forEach((childSnapshot) => {
-      rideRequests.push(childSnapshot.val()); // Push each ride request data into an array
-    });
+
+    if (snapshot.exists()) {
+      snapshot.forEach((childSnapshot) => {
+        rideRequests.push(childSnapshot.val());
+      });
+    }
 
     return res.status(200).json({
       message: "All ride requests fetched successfully.",
-      rideRequests: rideRequests
+      rideRequests: rideRequests, // Will be [] if no data
     });
 
   } catch (error) {
@@ -2627,6 +2653,40 @@ const getAllStartedRides = async (req, res) => {
   }
 };
 
+const getAllEndedRides = async (req, res) => {
+  try {
+    console.log("Fetching all started rides...");
+
+    // Reference to the rides collection in Firestore
+    const ridesCollection = admin.firestore().collection("rides");
+
+    // Query for rides that have a rideStatus of "started"
+    const querySnapshot = await ridesCollection
+      .where("rideStatus", "==", "ended")
+      .get();
+
+    if (querySnapshot.empty) {
+      return res.status(404).json({
+        message: "No started rides found.",
+      });
+    }
+
+    // Map through the results and collect ride data
+    const rides = [];
+    querySnapshot.forEach(doc => {
+      rides.push({ id: doc.id, ...doc.data() });
+    });
+
+    return res.status(200).json({
+      message: "All ended rides fetched successfully.",
+      rides,
+    });
+  } catch (error) {
+    console.error("Error fetching started rides:", error);
+    return res.status(500).json({ error: "Internal server error." });
+  }
+};
+
 
 
 
@@ -2660,5 +2720,6 @@ module.exports = {
   getMostLatestRideByDriver,
   getAllRideRequests,
   getStartedRidesByDriverLast,
-  getAllStartedRides
+  getAllStartedRides,
+  getAllEndedRides
 };

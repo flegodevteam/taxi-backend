@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const {getMostLatestRideByDriver,getMostLatestRideByUser,updateUserPoints,getAllRides,fetchAllPreRideRequests,cancelRideRequest,getAssignedDriverLocation ,getEndedRidesByUser,getEndedRidesByDriver,getStartedRidesByDriver,getStartedRidesByUser,updateRideCost,getLatestRideByUser,
-    getAllRatings,getRejectedRequests,getAcceptedRequests,getAllRidesByDate,requestRide,getRideRequestsForDriver,handleRideRequest,updateWaitingTime,getRideDetails,updateRideStatus,updateRideRating,getRideRating,getAllRideRequests,getStartedRidesByDriverLast,getAllStartedRides} = require("../controllers/RideController")
+    getAllRatings,getRejectedRequests,getAcceptedRequests,getAllRidesByDate,requestRide,getRideRequestsForDriver,handleRideRequest,updateWaitingTime,getRideDetails,updateRideStatus,updateRideRating,getRideRating,getAllRideRequests,getStartedRidesByDriverLast,getAllStartedRides,getAllEndedRides} = require("../controllers/RideController")
 const {authenticateToken} = require("../Middleware/Auth")
 
 router.post('/request-ride', authenticateToken,requestRide);
@@ -68,6 +68,8 @@ router.get("/get-latest-ride-by-driver/:driverId",authenticateToken,getMostLates
 router.get('/ride-requests', authenticateToken, getAllRideRequests);
 
 router.get('/get-started-rides', authenticateToken, getAllStartedRides);
+
+router.get('/get-ended-rides', authenticateToken, getAllEndedRides);
 
 
 
