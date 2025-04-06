@@ -2655,7 +2655,7 @@ const getAllStartedRides = async (req, res) => {
 
 const getAllEndedRides = async (req, res) => {
   try {
-    console.log("Fetching all started rides...");
+    //console.log("Fetching all started rides...");
 
     // Reference to the rides collection in Firestore
     const ridesCollection = admin.firestore().collection("rides");
