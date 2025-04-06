@@ -32,6 +32,40 @@ const addVehiclePackage = async (req, res) => {
   }
 };
 
+
+// Add a new vehicle type
+const addVehicleType = async (req, res) => {
+  try {
+    const { vehicle_type } = req.body;
+
+    if (!vehicle_type) {
+      return res.status(400).json({ error: "Vehicle type is required." });
+    }
+
+    // Check if the vehicle type already exists in the collection
+    const snapshot = await firestore
+      .collection('vehicle_packages')
+      .where('vehicle_type', '==', vehicle_type)
+      .get();
+
+    if (!snapshot.empty) {
+      return res.status(400).json({ error: "Vehicle type already exists." });
+    }
+
+    // Add new vehicle type to the collection
+    await firestore.collection('vehicle_types').add({
+      vehicle_type,
+      created_at: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return res.status(201).json({
+      message: `Vehicle type '${vehicle_type}' added successfully.`,
+    });
+  } catch (error) {
+    console.error("Error adding vehicle type:", error);
+    return res.status(500).json({ error: "Failed to add vehicle type." });
+  }
+};
 // Read (Get) all vehicle packages
 const getAllVehiclePackages = async (req, res) => {
   try {
@@ -153,6 +187,73 @@ const getVehiclePackageByVehicleType = async (req, res) => {
 };
 
 
+const getAvailableVehicleTypes = async (req, res) => {
+  try {
+    const snapshot = await firestore.collection('vehicle_packages').get();
+
+    if (snapshot.empty) {
+      return res.status(404).json({ error: "No vehicle types found." });
+    }
+
+    const vehicleTypes = [];
+    snapshot.forEach(doc => {
+      const vehiclePackage = doc.data();
+      if (vehiclePackage.vehicle_type && !vehicleTypes.includes(vehiclePackage.vehicle_type)) {
+        vehicleTypes.push(vehiclePackage.vehicle_type);
+      }
+    });
+
+    return res.status(200).json({
+      message: "Available vehicle types retrieved successfully.",
+      data: vehicleTypes,
+    });
+  } catch (error) {
+    console.error("Error retrieving vehicle types:", error);
+    return res.status(500).json({ error: "Failed to retrieve vehicle types." });
+  }
+};
+// Add all vehicle types from the 'vehicle_packages' collection to 'vehicle_types'
+const addAllVehicleTypes = async (req, res) => {
+  try {
+    // Fetch all vehicle packages
+    const snapshot = await firestore.collection('vehicle_packages').get();
+
+    if (snapshot.empty) {
+      return res.status(404).json({ error: "No vehicle packages found." });
+    }
+
+    const vehicleTypes = new Set(); // Use a Set to ensure unique vehicle types
+
+    snapshot.forEach(doc => {
+      const vehiclePackage = doc.data();
+      if (vehiclePackage.vehicle_type) {
+        vehicleTypes.add(vehiclePackage.vehicle_type); // Add vehicle type to the set
+      }
+    });
+
+    if (vehicleTypes.size === 0) {
+      return res.status(400).json({ error: "No vehicle types found in the vehicle packages." });
+    }
+
+    // Add the vehicle types to the 'vehicle_types' collection
+    const batch = firestore.batch();
+    vehicleTypes.forEach(vehicleType => {
+      const vehicleTypeRef = firestore.collection('vehicle_types').doc(vehicleType); // Use vehicle_type as the document ID
+      batch.set(vehicleTypeRef, { vehicle_type: vehicleType, created_at: admin.firestore.FieldValue.serverTimestamp() });
+    });
+
+    // Commit the batch write
+    await batch.commit();
+
+    return res.status(201).json({
+      message: "All vehicle types added successfully.",
+      vehicle_types: Array.from(vehicleTypes), // Convert Set to Array
+    });
+  } catch (error) {
+    console.error("Error adding vehicle types:", error);
+    return res.status(500).json({ error: "Failed to add vehicle types." });
+  }
+};
 
 
 module.exports = {
@@ -161,5 +262,8 @@ module.exports = {
   getVehiclePackageById,
   updateVehiclePackage,
   deleteVehiclePackage,
-  getVehiclePackageByVehicleType
+  getVehiclePackageByVehicleType,
+  getAvailableVehicleTypes,
+  addVehicleType,
+  addAllVehicleTypes
 };
