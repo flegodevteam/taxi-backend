@@ -18,7 +18,7 @@ const addVehiclePackage = async (req, res) => {
       created_at: admin.firestore.FieldValue.serverTimestamp(),
     };
 
-    const docRef = await firestore.collection("vehicle_packages").add(newPackage);
+    const docRef = await firestore.collection("vehicle_packages_new").add(newPackage);
     const addedPackage = await docRef.get();
 
     return res.status(201).json({
@@ -44,7 +44,7 @@ const addVehicleType = async (req, res) => {
 
     // Check if the vehicle type already exists in the collection
     const snapshot = await firestore
-      .collection('vehicle_packages')
+      .collection('vehicle_packages_new')
       .where('vehicle_type', '==', vehicle_type)
       .get();
 
@@ -69,7 +69,7 @@ const addVehicleType = async (req, res) => {
 // Read (Get) all vehicle packages
 const getAllVehiclePackages = async (req, res) => {
   try {
-    const snapshot = await firestore.collection("vehicle_packages").get();
+    const snapshot = await firestore.collection("vehicle_packages_new").get();
     if (snapshot.empty) {
       return res.status(404).json({ message: "No vehicle packages found." });
     }
@@ -87,7 +87,7 @@ const getAllVehiclePackages = async (req, res) => {
 const getVehiclePackageById = async (req, res) => {
   try {
     const { id } = req.params;
-    const docRef = firestore.collection("vehicle_packages").doc(id);
+    const docRef = firestore.collection("vehicle_packages_new").doc(id);
     const doc = await docRef.get();
 
     if (!doc.exists) {
@@ -119,7 +119,7 @@ const updateVehiclePackage = async (req, res) => {
       updated_at: admin.firestore.FieldValue.serverTimestamp(),
     };
 
-    const docRef = firestore.collection("vehicle_packages").doc(id);
+    const docRef = firestore.collection("vehicle_packages_new").doc(id);
     const doc = await docRef.get();
 
     if (!doc.exists) {
@@ -143,7 +143,7 @@ const updateVehiclePackage = async (req, res) => {
 const deleteVehiclePackage = async (req, res) => {
   try {
     const { id } = req.params;
-    const docRef = firestore.collection("vehicle_packages").doc(id);
+    const docRef = firestore.collection("vehicle_packages_new").doc(id);
     const doc = await docRef.get();
 
     if (!doc.exists) {
@@ -169,7 +169,7 @@ const getVehiclePackageByVehicleType = async (req, res) => {
     }
 
     const snapshot = await firestore
-      .collection("vehicle_packages")
+      .collection("vehicle_packages_new")
       .where("vehicle_type", "==", vehicle_type)
       .get();
 
@@ -189,7 +189,7 @@ const getVehiclePackageByVehicleType = async (req, res) => {
 
 const getAvailableVehicleTypes = async (req, res) => {
   try {
-    const snapshot = await firestore.collection('vehicle_packages').get();
+    const snapshot = await firestore.collection('vehicle_packages_new').get();
 
     if (snapshot.empty) {
       return res.status(404).json({ error: "No vehicle types found." });
@@ -212,11 +212,11 @@ const getAvailableVehicleTypes = async (req, res) => {
     return res.status(500).json({ error: "Failed to retrieve vehicle types." });
   }
 };
-// Add all vehicle types from the 'vehicle_packages' collection to 'vehicle_types'
+// Add all vehicle types from the 'vehicle_packages_new' collection to 'vehicle_types'
 const addAllVehicleTypes = async (req, res) => {
   try {
     // Fetch all vehicle packages
-    const snapshot = await firestore.collection('vehicle_packages').get();
+    const snapshot = await firestore.collection('vehicle_packages_new').get();
 
     if (snapshot.empty) {
       return res.status(404).json({ error: "No vehicle packages found." });
@@ -255,6 +255,151 @@ const addAllVehicleTypes = async (req, res) => {
   }
 };
 
+const addVehiclePackageNew = async (req, res) => {
+  try {
+    const { vehicle_type, base_distance_km, first_base_cost, after_cost, waiting_time_cost } = req.body;
+
+    if (!vehicle_type || !base_distance_km || !first_base_cost || !after_cost || !waiting_time_cost) {
+      return res.status(400).json({ error: "All fields are required." });
+    }
+
+    const newPackage = {
+      vehicle_type,
+      base_distance_km,        // Added base_distance_km
+      first_base_cost,         // Added first_base_cost
+      after_cost,              // Added after_cost
+      waiting_time_cost,       // Added waiting_time_cost
+      created_at: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    const docRef = await firestore.collection("vehicle_packages_new").add(newPackage);
+    const addedPackage = await docRef.get();
+
+    return res.status(201).json({
+      message: "Vehicle package added successfully.",
+      packageId: docRef.id,
+      data: addedPackage.data(),
+    });
+  } catch (error) {
+    console.error("Error adding vehicle package:", error);
+    return res.status(500).json({ error: "Failed to add vehicle package." });
+  }
+};
+const updateVehiclePackageNew = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { vehicle_type, base_distance_km, first_base_cost, after_cost, waiting_time_cost } = req.body;
+
+    if (!vehicle_type && !base_distance_km && !first_base_cost && !after_cost && !waiting_time_cost) {
+      return res.status(400).json({ error: "At least one field is required to update." });
+    }
+
+    const updates = {
+      ...(vehicle_type && { vehicle_type }),
+      ...(base_distance_km && { base_distance_km }),          // Added base_distance_km
+      ...(first_base_cost && { first_base_cost }),            // Added first_base_cost
+      ...(after_cost && { after_cost }),                      // Added after_cost
+      ...(waiting_time_cost && { waiting_time_cost }),        // Added waiting_time_cost
+      updated_at: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    const docRef = firestore.collection("vehicle_packages_new").doc(id);
+    const doc = await docRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({ message: "Vehicle package not found." });
+    }
+
+    await docRef.update(updates);
+    const updatedDoc = await docRef.get();
+
+    return res.status(200).json({
+      message: "Vehicle package updated successfully.",
+      data: { id: updatedDoc.id, ...updatedDoc.data() },
+    });
+  } catch (error) {
+    console.error("Error updating vehicle package:", error);
+    return res.status(500).json({ error: "Failed to update vehicle package." });
+  }
+};
+const getAllVehiclePackagesNew = async (req, res) => {
+  try {
+    const snapshot = await firestore.collection("vehicle_packages_new").get();
+    if (snapshot.empty) {
+      return res.status(404).json({ message: "No vehicle packages found." });
+    }
+
+    const packages = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+    return res.status(200).json(packages);
+  } catch (error) {
+    console.error("Error fetching vehicle packages:", error);
+    return res.status(500).json({ error: "Failed to fetch vehicle packages." });
+  }
+};
+
+const getVehiclePackageByVehicleTypeNew = async (req, res) => {
+  try {
+    const { vehicle_type } = req.params;
+
+    if (!vehicle_type) {
+      return res.status(400).json({ error: "Vehicle type is required." });
+    }
+
+    const snapshot = await firestore
+      .collection("vehicle_packages_new")
+      .where("vehicle_type", "==", vehicle_type)
+      .get();
+
+    if (snapshot.empty) {
+      return res.status(404).json({ message: "No vehicle packages found for the specified vehicle type." });
+    }
+
+    const packages = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+    return res.status(200).json(packages);
+  } catch (error) {
+    console.error("Error fetching vehicle packages by type:", error);
+    return res.status(500).json({ error: "Failed to fetch vehicle packages by type." });
+  }
+};
+
+const getVehiclePackageByIdNew = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const docRef = firestore.collection("vehicle_packages_new").doc(id);
+    const doc = await docRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({ message: "Vehicle package not found." });
+    }
+
+    return res.status(200).json({ id: doc.id, ...doc.data() });
+  } catch (error) {
+    console.error("Error fetching vehicle package:", error);
+    return res.status(500).json({ error: "Failed to fetch vehicle package." });
+  }
+};
+
+const deleteVehiclePackageNew = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const docRef = firestore.collection("vehicle_packages_new").doc(id);
+    const doc = await docRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({ message: "Vehicle package not found." });
+    }
+
+    await docRef.delete();
+    return res.status(200).json({ message: "Vehicle package deleted successfully." });
+  } catch (error) {
+    console.error("Error deleting vehicle package:", error);
+    return res.status(500).json({ error: "Failed to delete vehicle package." });
+  }
+};
+
+
 
 module.exports = {
   addVehiclePackage,
@@ -265,5 +410,12 @@ module.exports = {
   getVehiclePackageByVehicleType,
   getAvailableVehicleTypes,
   addVehicleType,
-  addAllVehicleTypes
+  addAllVehicleTypes,
+
+  addVehiclePackageNew,
+  updateVehiclePackageNew,
+  getAllVehiclePackagesNew,
+  getVehiclePackageByVehicleTypeNew,
+  getVehiclePackageByIdNew,
+  deleteVehiclePackageNew
 };
