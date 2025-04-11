@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {getMostLatestRideByDriver,getMostLatestRideByUser,updateUserPoints,getAllRides,fetchAllPreRideRequests,cancelRideRequest,getAssignedDriverLocation ,getEndedRidesByUser,getEndedRidesByDriver,getStartedRidesByDriver,getStartedRidesByUser,updateRideCost,getLatestRideByUser,
     getAllRatings,getRejectedRequests,getAcceptedRequests,getAllRidesByDate,requestRide,getRideRequestsForDriver,handleRideRequest,updateWaitingTime,getRideDetails,updateRideStatus,updateRideRating,getRideRating,getAllRideRequests,getStartedRidesByDriverLast,getAllStartedRides,getAllEndedRides,
-    requestRideNew} = require("../controllers/RideController")
+    requestRideNew,scheduleFutureTrip} = require("../controllers/RideController")
 const {authenticateToken} = require("../Middleware/Auth")
 
 router.post('/request-ride', authenticateToken,requestRide);
@@ -75,5 +75,7 @@ router.get('/get-ended-rides', authenticateToken, getAllEndedRides);
 
 // new implementation
 router.post('/request-ride-new', authenticateToken,requestRideNew);
+
+router.post('/schedule-trip', authenticateToken, scheduleFutureTrip);
 
 module.exports = router;

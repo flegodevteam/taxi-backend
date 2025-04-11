@@ -613,9 +613,6 @@ const requestRideNew = async (req, res) => {
 
 
 
-
-
-
 const cancelRideRequest = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -2292,6 +2289,69 @@ const getAllEndedRides = async (req, res) => {
   }
 };
 
+const scheduleFutureTrip = async (req, res) => {
+  try {
+    const {
+      latitude,
+      longitude,
+      destination,
+      userId,
+      phoneNumber,
+      whichVehicle,
+      isReturnTrip = false,
+      additionalDistanceKm = 0,
+      scheduledDate, // Expected format: 'YYYY-MM-DD'
+      scheduledTime  // Expected format: 'HH:mm'
+    } = req.body;
+
+    if (
+      !latitude ||
+      !longitude ||
+      !destination ||
+      !userId ||
+      !phoneNumber ||
+      !scheduledDate ||
+      !scheduledTime
+    ) {
+      return res.status(400).json({ error: "Missing required fields including scheduled date and time." });
+    }
+
+    // Combine date and time into a single ISO string
+    const combinedDateTime = new Date(`${scheduledDate}T${scheduledTime}:00Z`);
+
+    const now = new Date();
+    if (combinedDateTime <= now) {
+      return res.status(400).json({ error: "Scheduled time must be in the future." });
+    }
+
+    const db = admin.firestore();
+    const scheduledTripId = `SCHEDULED_RIDE_${Date.now()}`;
+
+    const tripDetails = {
+      scheduledTripId,
+      userId,
+      phoneNumber,
+      currentLocation: { latitude, longitude },
+      destinationLocation: destination,
+      whichVehicle,
+      isReturnTrip,
+      additionalDistanceKm,
+      scheduledDateTime: admin.firestore.Timestamp.fromDate(combinedDateTime),
+      status: "Scheduled",
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    await db.collection("scheduledTrips").doc(scheduledTripId).set(tripDetails);
+
+    return res.status(200).json({
+      message: "Ride scheduled successfully.",
+      tripDetails,
+    });
+  } catch (error) {
+    console.error("❌ Error scheduling future trip:", error.message);
+    return res.status(500).json({ error: "Internal server error while scheduling ride." });
+  }
+};
 
 
 
@@ -2329,5 +2389,6 @@ module.exports = {
   getAllEndedRides,
 
 
-  requestRideNew
+  requestRideNew,
+  scheduleFutureTrip
 };
