@@ -194,237 +194,6 @@ const getUserMobile = async (userId) => {
   }
 };
 
-
-// const requestRide = async (req, res) => {
-//   try {
-//     const { latitude, longitude, whichVehicle, destination, userId, phoneNumber } = req.body;
-
-//     if (!latitude || !longitude || !destination  || !userId || !phoneNumber) {
-//       console.log("Error: Missing required fields");
-//       return res.status(400).send({
-//         error: "Latitude, longitude, destination, userId, phoneNumber, and userEmail are required.",
-//       });
-//     }
-
-//     const currentLocation = { latitude, longitude };
-//     const destinationLocation = destination;
-//     const rideId = `RIDE${Date.now()}`;
-//     const preRideId = `PRERIDE${Date.now()}`;
-
-//     const db = admin.firestore();
-
-//     // **Step 1: Save the ride request to 'preRideRequest' before processing**
-//     const preRideRequestRef = db.collection("preRideRequest").doc(preRideId);
-//     await preRideRequestRef.set({
-//       preRideId,
-//       rideId,
-      
-//       userId,
-//       phoneNumber,
-//       currentLocation,
-//       destinationLocation,
-//       whichVehicle,
-//       status: "Processing", // Initial status
-//       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-//     });
-
-//     console.log(`✅ Ride request successfully saved! PreRideId: ${preRideId}, UserId: ${userId}`);
-
-//      // **Function to check if ride is canceled**
-//      const checkIfCanceled = async () => {
-//       const preRideDoc = await preRideRequestRef.get();
-//       if (preRideDoc.exists && preRideDoc.data().status === "Canceled") {
-//         console.log("Ride request was canceled before proceeding.");
-//         throw new Error("Ride request has been canceled.");
-//       }
-//     };
-
-//     // **Step 2: Initialize search parameters**
-//     let searchRadius = 5000; // Start with a 5km radius
-//     const maxRadius = 20000; // Maximum search limit
-//     let driversWithin5km = [];
-
-//     // **Step 3: Fetch drivers and filter in a loop**
-//     while (searchRadius <= maxRadius) {
-
-//       await checkIfCanceled();
-//       // Fetch available drivers
-//       const approvedDriversSnapshot = await db
-//         .collection("drivers_personal_data")
-//         .where("isAdminApprove", "==", "approved")
-//         .get();
-
-//       if (approvedDriversSnapshot.empty) {
-//         console.log("No approved drivers found.");
-//         return res.status(404).send({ message: "No approved drivers available." });
-//       }
-
-//       const approvedDriverEmails = approvedDriversSnapshot.docs.map((doc) => doc.id);
-
-//       const activeDriversSnapshot = await db
-//         .collection("drivers_location")
-//         .where("isActive", "==", true)
-//         .get();
-
-//       if (activeDriversSnapshot.empty) {
-//         console.log("No active drivers found.");
-//         return res.status(404).send({ message: "No active drivers available." });
-//       } 
-
-//       const activeApprovedDrivers = activeDriversSnapshot.docs.filter((doc) =>
-//         approvedDriverEmails.includes(doc.id)
-//       );
-
-//       if (activeApprovedDrivers.length === 0) {
-//         console.log("No drivers match the active and approved criteria.");
-//         return res.status(404).send({ message: "No active drivers match the approved criteria." });
-//       }
-
-//       // **Step 4: Check payment status of drivers**
-//       const finalDrivers = await Promise.all(
-//         activeApprovedDrivers.map(async (doc) => {
-//           const driverEmail = doc.id;
-//           const driverPersonalData = await db.collection("drivers_personal_data").doc(driverEmail).get();
-
-//           if (driverPersonalData.exists && driverPersonalData.data().payment_Status === true) {
-//             return {
-//               email: driverEmail,
-//               current_location: doc.data().current_location,
-//               whichVehicle: driverPersonalData.data().whichVehicle || null,
-//             };
-//           }
-//           return null;
-//         })
-//       );
-
-//       await checkIfCanceled();
-
-//       const eligibleDrivers = finalDrivers.filter((driver) => driver !== null);
-
-//       // **Step 5: Filter drivers within the current search radius**
-//       driversWithin5km = eligibleDrivers.filter((driver) => {
-//         if (!driver.current_location) return false;
-//         const driverLocation = {
-//           latitude: driver.current_location.latitude,
-//           longitude: driver.current_location.longitude,
-//         };
-//         return geolib.getDistance(currentLocation, driverLocation) <= searchRadius;
-//       });
-
-//       if (driversWithin5km.length > 0) {
-//         console.log("Drivers found:", driversWithin5km);
-//         break; // Exit the loop if drivers are found
-//       } else {
-//         console.log(`No drivers found within ${searchRadius / 1000} km. Expanding search...`);
-//         searchRadius += 5000; // Increase radius by 5km
-
-//         await checkIfCanceled();
-//         // Wait for 1 minute before the next check
-//         await new Promise(resolve => setTimeout(resolve, 60000)); // Optional: delay for 1 minute before the next search
-//       }
-//     }
-
-//     if (driversWithin5km.length === 0) {
-//       console.log("No drivers found within the maximum search radius.");
-//       return res.status(404).send({ message: "No drivers found within range." });
-//     }
-    
-
-//     // **Step 6: Filter drivers by vehicle type**
-//     const getVehicleTypeFromVehicleData = async (driverEmail) => {
-//       await checkIfCanceled();
-//       try {
-//         const vehicleDataDoc = await db.collection("drivers_vehicle_data").doc(driverEmail).get();
-//         if (!vehicleDataDoc.exists) return null;
-//         return vehicleDataDoc.data().whichVehicle || null;
-//       } catch (error) {
-//         console.error("Error fetching vehicle data for driver:", driverEmail, error.message);
-//         return null;
-//       }
-//     };
-    
-
-//     const filteredDrivers = [];
-//     for (const driver of driversWithin5km) {
-
-//       await checkIfCanceled();
-
-//       let driverVehicleType = driver.whichVehicle || (await getVehicleTypeFromVehicleData(driver.email));
-//       if (whichVehicle && driverVehicleType && driverVehicleType.toLowerCase() === whichVehicle.toLowerCase()) {
-//         filteredDrivers.push(driver);
-//       } else if (!whichVehicle) {
-//         filteredDrivers.push(driver);
-//       }
-//     }
-
-//     if (filteredDrivers.length === 0) {
-//       console.log("No drivers match the final criteria.");
-//       return res.status(404).send({ message: "No drivers found matching vehicle type." });
-//     }
-
-//     // **Step 7: Sort drivers by proximity and send ride requests**
-//     const sortedDrivers = filteredDrivers
-//       .sort(
-//         (a, b) =>
-//           geolib.getDistance(currentLocation, a.current_location) -
-//           geolib.getDistance(currentLocation, b.current_location)
-//       )
-//       .slice(0, 5);
-
-//     const sentRequests = [];
-//     const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-//     let lastSentTime = Date.now();
-
-//      await checkIfCanceled();
-
-//     // **Send ride requests to top 5 drivers**
-//     for (const driver of sortedDrivers) {
-
-//       await checkIfCanceled();
-
-//       const currentTime = Date.now();
-//       const timeElapsed = currentTime - lastSentTime;
-//       if (timeElapsed < 3000) {
-//         await delay(3000 - timeElapsed);
-//       }
-
-//       try {
-//         console.log(`Sending request to driver: ${driver.email}`);
-//         await sendRideRequest(driver.email, {
-//           rideId,
-         
-//           userId,
-//           phoneNumber,
-//           currentLocation,
-//           destinationLocation,
-//           whichVehicle,
-//         });
-
-//         sentRequests.push({ driverEmail: driver.email, status: "Request sent" });
-//         lastSentTime = Date.now();
-//       } catch (error) {
-//         console.error(`Error sending request to driver ${driver.email}:`, error.message);
-//       }
-//     }
-
-//     // Update status to "Proceed" in preRideRequest
-//     await preRideRequestRef.update({
-//       status: "Proceed",
-//     });
-
-//     res.send({
-//       message: "Ride request sent to nearest drivers.",
-//       sentRequests,
-//       destination: destinationLocation,
-//     });
-
-//   } catch (error) {
-//     console.error("Error in requestRide:", error.message);
-//     res.status(500).send({ error: error.message });
-//   }
-// };
-
 const getDriversWhoHaveRidesToday = async (db) => {
   console.log("📅 Fetching drivers who have completed rides today...");
   const today = new Date();
@@ -654,9 +423,193 @@ const requestRide = async (req, res) => {
 };
 
 
+const requestRideNew = async (req, res) => {
+  try {
+    console.log("🚀 Ride request received:", req.body);
 
+    const {
+      latitude,
+      longitude,
+      whichVehicle,
+      destination,
+      userId,
+      phoneNumber,
+      isReturnTrip = false,
+      additionalDistanceKm = 0
+    } = req.body;
 
+    if (!latitude || !longitude || !destination || !userId || !phoneNumber) {
+      console.log("❌ Error: Missing required fields");
+      return res.status(400).send({ error: "Required fields are missing." });
+    }
 
+    const db = admin.firestore();
+    const currentLocation = { latitude, longitude };
+    const destinationLocation = destination;
+    const rideId = `RIDE${Date.now()}`;
+    const preRideId = `PRERIDE${Date.now()}`;
+
+    console.log("📝 Saving pre-ride request...");
+    const preRideRequestRef = db.collection("preRideRequestNew").doc(preRideId);
+    await preRideRequestRef.set({
+      preRideId,
+      rideId,
+      userId,
+      phoneNumber,
+      currentLocation,
+      destinationLocation,
+      whichVehicle,
+      isReturnTrip,
+      additionalDistanceKm,
+      status: "Processing",
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    console.log(`✅ Pre-ride request saved! PreRideId: ${preRideId}`);
+
+    const checkIfCanceled = async () => {
+      const preRideDoc = await preRideRequestRef.get();
+      if (preRideDoc.exists && preRideDoc.data().status === "Canceled") {
+        console.log("Ride request was canceled before proceeding.");
+        throw new Error("Ride request has been canceled.");
+      }
+    };
+
+    const driversWhoHaveRidesToday = await getDriversWhoHaveRidesToday(db);
+    let searchRadius = 5000;
+    const maxRadius = 20000;
+    let driversWithin5km = [];
+
+    while (searchRadius <= maxRadius) {
+      await checkIfCanceled();
+
+      const approvedDriversSnapshot = await db
+        .collection("drivers_personal_data")
+        .where("isAdminApprove", "==", "approved")
+        .get();
+
+      if (approvedDriversSnapshot.empty) {
+        return res.status(404).send({ message: "No approved drivers available." });
+      }
+
+      const approvedDriverEmails = approvedDriversSnapshot.docs.map((doc) => doc.id);
+
+      const activeDriversSnapshot = await db
+        .collection("drivers_location")
+        .where("isActive", "==", true)
+        .get();
+
+      if (activeDriversSnapshot.empty) {
+        return res.status(404).send({ message: "No active drivers available." });
+      }
+
+      await checkIfCanceled();
+
+      const activeApprovedDrivers = activeDriversSnapshot.docs
+        .filter((doc) => approvedDriverEmails.includes(doc.id))
+        .map((doc) => ({
+          email: doc.id,
+          current_location: doc.data().current_location,
+        }));
+
+      const finalDrivers = await Promise.all(
+        activeApprovedDrivers.map(async (driver) => {
+          await checkIfCanceled();
+          const personal = await db.collection("drivers_personal_data").doc(driver.email).get();
+          const vehicle = await db.collection("drivers_vehicle_data").doc(driver.email).get();
+          if (personal.exists && personal.data().payment_Status === true) {
+            return {
+              email: driver.email,
+              current_location: driver.current_location,
+              whichVehicle: vehicle.exists ? vehicle.data().whichVehicle : null,
+            };
+          }
+          return null;
+        })
+      );
+
+      await checkIfCanceled();
+      const eligibleDrivers = finalDrivers.filter((driver) => driver !== null);
+      const driversWithoutRidesToday = eligibleDrivers.filter(
+        (driver) => !driversWhoHaveRidesToday.has(driver.email)
+      );
+      const driversWithRidesToday = eligibleDrivers.filter(
+        (driver) => driversWhoHaveRidesToday.has(driver.email)
+      );
+
+      const allDriversToSendRequest = [...driversWithoutRidesToday, ...driversWithRidesToday];
+
+      if (allDriversToSendRequest.length === 0) {
+        return res.status(404).send({ message: "No available drivers at the moment." });
+      }
+
+      driversWithin5km = allDriversToSendRequest.filter((driver) => {
+        if (!driver.current_location) return false;
+        const driverLocation = {
+          latitude: driver.current_location.latitude,
+          longitude: driver.current_location.longitude,
+        };
+        return geolib.getDistance(currentLocation, driverLocation) <= searchRadius;
+      });
+
+      await checkIfCanceled();
+      if (driversWithin5km.length > 0) break;
+
+      searchRadius += 5000;
+      await new Promise((resolve) => setTimeout(resolve, 60000));
+    }
+
+    if (driversWithin5km.length === 0) {
+      return res.status(404).send({ message: "No drivers found within range." });
+    }
+
+    const sortedDrivers = driversWithin5km
+      .sort(
+        (a, b) =>
+          geolib.getDistance(currentLocation, a.current_location) -
+          geolib.getDistance(currentLocation, b.current_location)
+      )
+      .slice(0, 5);
+
+    const sentRequests = [];
+    let lastSentTime = Date.now();
+
+    for (const driver of sortedDrivers) {
+      await checkIfCanceled();
+      const timeElapsed = Date.now() - lastSentTime;
+      if (timeElapsed < 3000) await new Promise((resolve) => setTimeout(resolve, 3000 - timeElapsed));
+
+      try {
+        await sendRideRequest(driver.email, {
+          rideId,
+          userId,
+          phoneNumber,
+          currentLocation,
+          destinationLocation,
+          whichVehicle,
+          isReturnTrip,
+          additionalDistanceKm,
+        });
+        sentRequests.push({ driverEmail: driver.email, status: "Request sent" });
+        lastSentTime = Date.now();
+      } catch (error) {
+        console.error(`❌ Error sending request to ${driver.email}:`, error.message);
+      }
+    }
+
+    await checkIfCanceled();
+    await preRideRequestRef.update({ status: "Proceed" });
+
+    res.send({
+      message: "Ride request sent to nearest drivers.",
+      sentRequests,
+      destination: destinationLocation,
+    });
+  } catch (error) {
+    console.error("❌ Error in requestRide:", error.message);
+    res.status(500).send({ error: error.message });
+  }
+};
 
 
 
@@ -696,357 +649,6 @@ const cancelRideRequest = async (req, res) => {
     res.status(500).send({ error: error.message });
   }
 };
-
-
-
-
-// const requestRide = async (req, res) => {
-//   try {
-//     const { latitude, longitude, whichVehicle, destination, userEmail,userId,phoneNumber } =
-//       req.body;
-
-//     if (!latitude || !longitude || !destination || !userEmail ||!userId ||!phoneNumber) {
-//       console.log("Error: Missing required fields");
-//       return res
-//         .status(400)
-//         .send({
-//           error:
-//             "Latitude, longitude, destination,userId,phoneNumber and userEmail are required.",
-//         });
-//     }
-
-//     const currentLocation = { latitude, longitude };
-//     const destinationLocation = destination;
-//     const rideId = `RIDE${Date.now()}`;
-
-//     const db = admin.firestore();
-//     //console.log("Step 1: Fetching approved drivers with isAdminApprove = true");
-//     const maxAttempts = 5; // Maximum number of attempts to find a driver
-//     let attempt = 0;
-//     let foundDriver = null;
-//     let driversWithin5km = [];
-//     while (attempt < maxAttempts && !foundDriver) {
-//       attempt++;
-//     // Step 1: Fetch approved drivers with 'isAdminApprove' = 'approved'
-// const approvedDriversSnapshot = await db
-// .collection("drivers_personal_data")
-// .where("isAdminApprove", "==", "approved") // Changed from `true` to `"approved"`
-// .get();
-
-//     if (approvedDriversSnapshot.empty) {
-//       console.log("No approved drivers found.");
-//       return res
-//         .status(404)
-//         .send({ message: "No approved drivers available." });
-//     }
-
-//     ///console.log("approved drivers",approvedDriversSnapshot)
-//    console.log("Approved drivers found:", approvedDriversSnapshot.docs.length);
-//     // Extract emails of approved drivers
-//     const approvedDriverEmails = approvedDriversSnapshot.docs.map(
-//       (doc) => doc.id
-//     );
-
-//    // console.log("Step 2: Fetching active drivers with isActive = true");
-
-//     // Step 2: Fetch active drivers with 'isActive' = true and match with approved driver emails
-//     const activeDriversSnapshot = await db
-//       .collection("drivers_location")
-//       .where("isActive", "==", true)
-//       .get();
-
-//     if (activeDriversSnapshot.empty) {
-//       console.log("No active drivers found.");
-//       return res.status(404).send({ message: "No active drivers available." });
-//     }
-
-//    console.log("Active drivers found:", activeDriversSnapshot.docs.length);
-//     const activeApprovedDrivers = activeDriversSnapshot.docs.filter((doc) =>
-//       approvedDriverEmails.includes(doc.id)
-//     );
-
-    
-
-//     if (activeApprovedDrivers.length === 0) {
-//       console.log("No drivers match the active and approved criteria.");
-//       return res
-//         .status(404)
-//         .send({ message: "No active drivers match the approved criteria." });
-//     }
-
-//     // console.log(
-//     //   "Active and approved drivers found:",
-//     //   activeApprovedDrivers.length
-//     // );
-
-//     // console.log(
-//     //   "Step 3: Checking payment status of the active and approved drivers"
-//     // );
-
-//     // Step 3: Check 'payment_Status' of the active and approved drivers
-//     const finalDrivers = await Promise.all(
-//       activeApprovedDrivers.map(async (doc) => {
-
-//          //console.log("doc",doc) 
-
-//         const driverEmail = doc.id;
-//         const driverPersonalData = await db
-//           .collection("drivers_personal_data")
-//           .doc(driverEmail)
-//           .get();
-
-//         if (
-//           driverPersonalData.exists &&
-//           driverPersonalData.data().payment_Status === true
-//         ) {
-//           return {
-//             email: driverEmail,
-//             current_location: doc.data().current_location,
-//             whichVehicle: driverPersonalData.data().whichVehicle || null,
-//           };
-//         }
-//         return null;
-//       })
-//     );
-
-//     // Remove null entries
-//     const eligibleDrivers = finalDrivers.filter((driver) => driver !== null);
-
-//     console.log("Eligible drivers:", eligibleDrivers);
-
-//     if (eligibleDrivers.length === 0) {
-//       console.log("No drivers match the payment status criteria.");
-//       // return res
-//       //   .status(404)
-//       //   .send({ message: "No drivers match the payment status criteria." });
-//       await new Promise(resolve => setTimeout(resolve, 30000));
-//         continue;
-//     }
-
-//     //console.log("Step 4: Filtering drivers within 5km radius");
-
-//     // Step 4: Filter drivers within 5km radius
-//     driversWithin5km = eligibleDrivers.filter((driver) => {
-//       if (!driver.current_location) return false;
-//       const driverLocation = {
-//         latitude: driver.current_location.latitude,
-//         longitude: driver.current_location.longitude,
-//       };
-//       return geolib.getDistance(currentLocation, driverLocation) <= 5000;
-//     });
-
-//     if (driversWithin5km.length === 0) {
-//       console.log("No drivers found within 5km.");
-//       // Optionally wait before retrying
-//       await new Promise(resolve => setTimeout(resolve, 30000)); // Wait for 3 seconds before retrying
-//       continue; // Retry the loop
-//     }
-
-//     // If we reach here, we have found eligible drivers within 5km
-//     foundDriver = driversWithin5km[0]; // You can choose how to select the driver
-
-//     // Proceed with sending the ride request to the found driver
-//     // (Add your logic to send the ride request here)
-
-//     // For demonstration, let's just log the found driver
-//     console.log("Found driver:", foundDriver);
-//   }
-
-//   if (!foundDriver) {
-//     return res.status(404).send({ message: "No suitable drivers found after multiple attempts." });
-//   }
-
-//     // console.log("Drivers within 5km:", driversWithin5km);
-
-//     // console.log("Step 5: Filtering drivers based on vehicle type");
-
-//     // // Step 5: Filtering drivers based on the specified vehicle type if available
-//     // console.log("Step 5: Filtering drivers based on vehicle type.");
-//     // console.log("Requested vehicle type:", whichVehicle);
-
-//     // Function to get vehicle type from the 'drivers_vehicle_data' collection
-//     const getVehicleTypeFromVehicleData = async (driverEmail) => {
-//       try {
-//         const vehicleDataDoc = await db
-//           .collection("drivers_vehicle_data")
-//           .doc(driverEmail)
-//           .get();
-//         if (!vehicleDataDoc.exists) {
-//           console.log(`No vehicle data found for driver ${driverEmail}`);
-//           return null; // No vehicle data found
-//         }
-//         const vehicleData = vehicleDataDoc.data();
-//         console.log(
-//           `Fetched vehicle data for driver ${driverEmail}:`,
-//           vehicleData
-//         );
-//         return vehicleData.whichVehicle || null; // Accessing 'whichVehicle' directly
-//       } catch (error) {
-//         console.error(
-//           "Error fetching vehicle data for driver:",
-//           driverEmail,
-//           error.message
-//         );
-//         return null;
-//       }
-//     };
-
-//     // Filter drivers based on the vehicle type
-//     const filteredDrivers = [];
-
-//     for (const driver of driversWithin5km) {
-//       // console.log(
-//       //   "Checking driver:",
-//       //   driver.email,
-//       //   "Vehicle:",
-//       //   driver.whichVehicle
-//       // );
-
-//       let driverVehicleType = driver.whichVehicle;
-
-//       // If vehicle type is null, fetch it from 'drivers_vehicle_data'
-//       if (!driverVehicleType) {
-//         driverVehicleType = await getVehicleTypeFromVehicleData(driver.email);
-//         // console.log(
-//         //   "Fetched vehicle type for driver",
-//         //   driver.email,
-//         //   ":",
-//         //   driverVehicleType
-//         // );
-//       }
-
-//       // Now filter based on the vehicle type (if whichVehicle was provided)
-//       if (
-//         whichVehicle &&
-//         driverVehicleType &&
-//         driverVehicleType.toLowerCase() === whichVehicle.toLowerCase()
-//       ) {
-//         filteredDrivers.push(driver);
-//       } else if (!whichVehicle) {
-//         filteredDrivers.push(driver); // If no specific vehicle type is required, add all drivers
-//       }
-//     }
-
-//    // console.log("Filtered drivers:", filteredDrivers);
-
-//     if (filteredDrivers.length === 0) {
-//       console.log("No drivers match the final criteria.");
-//       return res
-//         .status(404)
-//         .send({
-//           message: "No drivers found within range or matching vehicle type.",
-//         });
-//     }
-
-//     // console.log(
-//     //   "Filtered drivers based on vehicle type:",
-//     //   filteredDrivers.length
-//     // );
-
-//    // console.log("Step 6: Sorting drivers by proximity");
-
-//     // Step 6: Sort drivers by proximity and send ride requests
-//     const sortedDrivers = filteredDrivers
-//       .sort(
-//         (a, b) =>
-//           geolib.getDistance(currentLocation, a.current_location) -
-//           geolib.getDistance(currentLocation, b.current_location)
-//       )
-//       .slice(0, 5);
-
-//     //console.log("Sorted drivers (top 5):", sortedDrivers.length);
-
-//     const sentRequests = [];
-//     const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-//     let lastSentTime = Date.now();
-
-//     // Send the first request immediately
-//     const firstDriver = sortedDrivers[0];
-//     console.log("vehicle before",whichVehicle)
-
-//     const rideDetails = {
-//       rideId,
-//       userEmail,
-//       userId,phoneNumber,
-//       currentLocation,
-//       destinationLocation,
-//       whichVehicle,
-
-//     };
-
-//     //console.log("firstDriver",firstDriver)
-
-//     try {
-//       console.log(`Sending request to first driver: ${firstDriver.email}`);
-//       await sendRideRequest(firstDriver.email, rideDetails);
-//       sentRequests.push({
-//         driverEmail: firstDriver.email,
-//         status: "Request sent",
-//       });
-
-//      // console.log("phoneNumber",phoneNumber)
-//       // Save the ride request to Firestore with userEmail
-//       const requestPayload = {
-//         rideId,
-//         userEmail,
-//         userId,phoneNumber,
-//         driverEmail: firstDriver.email,
-//         driverId: firstDriver.email,
-//         status: "Request sent",
-//         currentLocation,
-//         destinationLocation,
-//         whichVehicle,
-//         createdAt: admin.firestore.FieldValue.serverTimestamp(),
-//       };
-
-//       //console.log("request payload:", requestPayload);
-
-//       await db.collection("ride_requests").add(requestPayload);
-//     } catch (error) {
-//       console.error(
-//         `Error sending request to driver -1 ${firstDriver.email}:`,
-//         error.message
-//       );
-//     }
-
-//     // Send ride requests to remaining drivers with a delay
-//     for (let i = 1; i < sortedDrivers.length; i++) {
-//       const driver = sortedDrivers[i];
-
-//       const currentTime = Date.now();
-//       const timeElapsed = currentTime - lastSentTime;
-//       if (timeElapsed < 3000) {
-//         await delay(3000 - timeElapsed);
-//       }
-
-//       try {
-//         console.log(`Sending request to driver: ${driver.email}`);
-//         await sendRideRequest(driver.email, rideDetails);
-//         sentRequests.push({
-//           driverEmail: driver.email,
-//           status: "Request sent",
-//         });
-
-//         lastSentTime = Date.now();
-//       } catch (error) {
-//         console.error(
-//           `Error sending request to driver ${driver.email}:`,
-//           error.message
-//         );
-//       }
-//     }
-
-//     res.send({
-//       message: "Ride request sent to nearest drivers.",
-//       sentRequests,
-//       destination: destinationLocation,
-//     });
-//   } catch (error) {
-//     console.error("Error in sendRideRequestToFilteredDrivers:", error.message);
-//     res.status(500).send({ error: error.message });
-//   }
-// };
 
 
 
@@ -2687,6 +2289,69 @@ const getAllEndedRides = async (req, res) => {
   }
 };
 
+const scheduleFutureTrip = async (req, res) => {
+  try {
+    const {
+      latitude,
+      longitude,
+      destination,
+      userId,
+      phoneNumber,
+      whichVehicle,
+      isReturnTrip = false,
+      additionalDistanceKm = 0,
+      scheduledDate, // Expected format: 'YYYY-MM-DD'
+      scheduledTime  // Expected format: 'HH:mm'
+    } = req.body;
+
+    if (
+      !latitude ||
+      !longitude ||
+      !destination ||
+      !userId ||
+      !phoneNumber ||
+      !scheduledDate ||
+      !scheduledTime
+    ) {
+      return res.status(400).json({ error: "Missing required fields including scheduled date and time." });
+    }
+
+    // Combine date and time into a single ISO string
+    const combinedDateTime = new Date(`${scheduledDate}T${scheduledTime}:00Z`);
+
+    const now = new Date();
+    if (combinedDateTime <= now) {
+      return res.status(400).json({ error: "Scheduled time must be in the future." });
+    }
+
+    const db = admin.firestore();
+    const scheduledTripId = `SCHEDULED_RIDE_${Date.now()}`;
+
+    const tripDetails = {
+      scheduledTripId,
+      userId,
+      phoneNumber,
+      currentLocation: { latitude, longitude },
+      destinationLocation: destination,
+      whichVehicle,
+      isReturnTrip,
+      additionalDistanceKm,
+      scheduledDateTime: admin.firestore.Timestamp.fromDate(combinedDateTime),
+      status: "Scheduled",
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    await db.collection("scheduledTrips").doc(scheduledTripId).set(tripDetails);
+
+    return res.status(200).json({
+      message: "Ride scheduled successfully.",
+      tripDetails,
+    });
+  } catch (error) {
+    console.error("❌ Error scheduling future trip:", error.message);
+    return res.status(500).json({ error: "Internal server error while scheduling ride." });
+  }
+};
 
 
 
@@ -2721,5 +2386,9 @@ module.exports = {
   getAllRideRequests,
   getStartedRidesByDriverLast,
   getAllStartedRides,
-  getAllEndedRides
+  getAllEndedRides,
+
+
+  requestRideNew,
+  scheduleFutureTrip
 };
