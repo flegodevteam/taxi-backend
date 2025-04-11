@@ -264,6 +264,113 @@ const calculateFullCostNew = async (req, res) => {
   }
 };
 
+const calculateFullCostNew1 = async (req, res) => {
+  try {
+    const {
+      pickup_location,
+      dropped_location,
+      extendedDropLocation,
+      vehicle_type,
+      waiting_time,
+      vehicle_weight = 0,
+      isReturnTrip = false
+    } = req.body;
+
+    // Validate required fields
+    if (!pickup_location || !dropped_location || !vehicle_type || waiting_time == null) {
+      return res.status(400).json({ error: "Required fields are missing." });
+    }
+
+    // 1️⃣ Calculate total trip distance
+    let totalDistanceKm = 0;
+
+    // One-way distance: pickup → drop
+    const firstLegMeters = geolib.getDistance(pickup_location, dropped_location);
+    totalDistanceKm += firstLegMeters / 1000;
+
+    // Optional extended trip: drop → extended location
+    if (extendedDropLocation) {
+      const extendedLegMeters = geolib.getDistance(dropped_location, extendedDropLocation);
+      totalDistanceKm += extendedLegMeters / 1000;
+    }
+
+    // Optional return trip: back to pickup location
+    if (isReturnTrip) {
+      const returnStart = extendedDropLocation || dropped_location;
+      const returnLegMeters = geolib.getDistance(returnStart, pickup_location);
+      totalDistanceKm += returnLegMeters / 1000;
+    }
+
+    // 2️⃣ Fetch vehicle pricing package
+    const packageSnapshot = await firestore
+      .collection("vehicle_packages_new")
+      .where("vehicle_type", "==", vehicle_type)
+      .get();
+
+    if (packageSnapshot.empty) {
+      return res.status(404).json({ error: "Vehicle type not found." });
+    }
+
+    const vehiclePackage = packageSnapshot.docs[0].data();
+    const {
+      base_distance_km,
+      first_base_cost,
+      after_cost,
+      waiting_time_cost,
+      weight_surcharge_rate = 0
+    } = vehiclePackage;
+
+    // 3️⃣ Validate numbers
+    if (
+      isNaN(base_distance_km) ||
+      isNaN(first_base_cost) ||
+      isNaN(after_cost) ||
+      isNaN(waiting_time_cost)
+    ) {
+      return res.status(400).json({ error: "Invalid vehicle package data." });
+    }
+
+    // 4️⃣ Cost calculation
+    let fullCost = 0;
+    fullCost += first_base_cost; // Base cost applies only once
+
+    if (totalDistanceKm > base_distance_km) {
+      const extraKm = totalDistanceKm - base_distance_km;
+      fullCost += Math.ceil(extraKm) * after_cost;
+    }
+
+    // Waiting time cost (per hour rate, charged per minute)
+    const waitingCost = (waiting_time / 60) * waiting_time_cost;
+    fullCost += waitingCost;
+
+    // Optional weight surcharge
+    if (vehicle_weight && weight_surcharge_rate) {
+      fullCost += vehicle_weight * weight_surcharge_rate;
+    }
+
+    // 5️⃣ Return result
+    return res.status(200).json({
+      message: "Full cost calculated successfully.",
+      data: {
+        totalDistanceKm: totalDistanceKm.toFixed(2),
+        baseDistanceKm: base_distance_km,
+        baseCost: first_base_cost,
+        extraDistanceKm: (totalDistanceKm - base_distance_km > 0)
+          ? (totalDistanceKm - base_distance_km).toFixed(2)
+          : "0.00",
+        costForExtraDistance: (Math.ceil(Math.max(totalDistanceKm - base_distance_km, 0)) * after_cost).toFixed(2),
+        waitingCost: waitingCost.toFixed(2),
+        totalCost: fullCost.toFixed(2)
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Error calculating full cost:", error);
+    return res.status(500).json({ error: "Failed to calculate full cost." });
+  }
+};
+
+
 module.exports = {
-  calculateFullCost,calculateFullCost2,calculateFullCost3,calculateFullCostNew
+  calculateFullCost,calculateFullCost2,calculateFullCost3,calculateFullCostNew,calculateFullCostNew1
 };

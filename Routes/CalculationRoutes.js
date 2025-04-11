@@ -1,5 +1,5 @@
 const express = require('express');
-const { calculateFullCost,calculateFullCost2,calculateFullCost3,calculateFullCostNew } = require('../controllers/CalculationController'); // Adjust the import path as needed
+const { calculateFullCost,calculateFullCost2,calculateFullCost3,calculateFullCostNew,calculateFullCostNew1 } = require('../controllers/CalculationController'); // Adjust the import path as needed
 
 const router = express.Router();
 
@@ -11,5 +11,6 @@ router.post('/calculate-full-cost3', calculateFullCost3); // Route for calculate
 
 // New route for calculateFullCostNew
 router.post('/calculate-full-cost-new', calculateFullCostNew);  // Added the new calculation route
+router.post('/calculate-full-cost-new1', calculateFullCostNew1);  // Added the new calculation route
 
 module.exports = router;
