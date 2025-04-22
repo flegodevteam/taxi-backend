@@ -135,268 +135,6 @@ const registerUser = async (req, res) => {
 
 
 
-
-// const registerDriver = async (req, res) => {
-//     try {
-//         // Extract data from the request body
-//         const {
-//             email,
-//             // driver_name,
-//             // driver_contact,
-//             // online = true, // Default online status to true
-//             payment_Status = true, // Default payment status to true
-//             firstName,
-//             lastName,
-//             birthday,
-//             gender,
-//             telephone,
-//             address,
-//             isVehicleOwner,
-//             profileImg,
-//             nicFront,
-//             nicBack,
-//             licenseFront,
-//             licenseBack,
-//             whichVehicle,
-//             vehicleNumber,
-//             brand,
-//             model,
-//             vehicleFrontImg,
-//             vehicleInsideImg,
-//             vehicleOutsideImg,
-//             yourVehicleOnly,
-//             registered_date,
-//             Points,
-//             isPassanger
-//         } = req.body;
-
-//         // Generate driverId in the specified format
-//         const now = new Date();
-//         const date = now.toISOString().slice(5, 10).replace("-", "").replace("-", ""); 
-//         const time = now.toTimeString().slice(0, 5).replace(":", "").slice(0, 2) + '.' + now.toTimeString().slice(3, 5); 
-//         const driverId = `DRIVER${date}${time}`;
-
-//         // Part 1: Save personal data (email, driverId, and additional personal details)
-//         const part1Data = {
-//             email: email,
-//             driverId: driverId,
-//             firstName,
-//             lastName,
-//             birthday,
-//             gender,
-//             telephone,
-//             address,
-//             isVehicleOwner,
-//             profileImg,
-//             nicFront,
-//             nicBack,
-//             licenseFront,
-//             licenseBack,
-//             registered_date,
-//             Points,
-//             isPassanger
-//         };
-
-//         // Part 2: Save vehicle-specific details
-//         const part2Data = {
-//             // vehicle_type: vehicle_type,
-//             whichVehicle,
-//             vehicleNumber,
-//             brand,
-//             model,
-//             vehicleFrontImg,
-//             vehicleInsideImg,
-//             vehicleOutsideImg,
-//             yourVehicleOnly
-//         };
-
-       
-
-//         // Part 3: Save current location and isActive status (initially null for location and false for isActive)
-//         const part3Data = {
-//             current_location: null, 
-//             isActive: false, 
-//             // online: online,
-//             payment_Status: payment_Status
-//         };
-
-//         // Use Firestore transaction to ensure both operations are completed together
-//         const batch = db.batch();
-
-//         // Save data to Part 1 collection (drivers_part1)
-//         const part1Ref = db.collection("drivers_personal_data").doc(email);
-//         batch.set(part1Ref, part1Data);
-
-//         // Save data to Part 2 collection (drivers_part2)
-//         const part2Ref = db.collection("drivers_vehicle_data").doc(email);
-//         batch.set(part2Ref, part2Data);
-
-//         // Save data to Part 3 collection (drivers_part3) for images
-//         const part3Ref = db.collection("drivers_location").doc(email);
-//         batch.set(part3Ref, part3Data);
-
-//         // // Save data to Part 4 collection (drivers_part4) for current location and isActive
-//         // const part4Ref = db.collection("drivers_part4").doc(email);
-//         // batch.set(part4Ref, part4Data);
-
-//         // Commit the batch operation
-//         await batch.commit();
-
-//         // Send a response after all parts are saved
-//         res.send({
-//             message: "Driver registered successfully",
-//             data: {
-//                 driverId,
-//                 email,
-//                 driver_name,
-//                 driver_contact,
-//                 current_location: null,
-//                 // online,
-//                 payment_Status,
-//                 firstName,
-//                 lastName,
-//                 birthday,
-//                 gender,
-//                 telephone,
-//                 address,
-//                 isVehicleOwner,
-//                 // vehicle_type,
-//                 whichVehicle,
-//                 vehicleNumber,
-//                 brand,
-//                 model,
-//                 yourVehicleOnly,
-//                 registered_date,
-//                 Points,
-//                 isPassanger
-//             },
-//         });
-//     } catch (error) {
-//         // Send a response if an error occurs
-//         res.status(500).send({ error: error.message });
-//     }
-// };
-
-// Register Driver correct
-// const registerDriver = async (req, res) => {
-//     try {
-//         const {
-//             email,
-//             payment_Status = true,
-//             firstName,
-//             lastName,
-//             birthday,
-//             gender,
-//             telephone,
-//             address,
-//             isVehicleOwner,
-//             profileImg,
-//             nicFront,
-//             nicBack,
-//             licenseFront,
-//             licenseBack,
-//             whichVehicle,
-//             vehicleNumber,
-//             brand,
-//             model,
-//             vehicleFrontImg,
-//             vehicleInsideImg,
-//             vehicleOutsideImg,
-//             yourVehicleOnly,
-//             registered_date,
-//             Points,
-//             isPassanger,
-//             fcmToken,
-//             password
-//         } = req.body;
-
-//         // Check for required fields
-//         if (!email || !fcmToken) {
-//             return res.status(400).send({ error: "Email and FCM token are required." });
-//         }
-
-//         // Generate unique driver ID based on current date and time
-//         const now = new Date();
-//         const date = now.toISOString().slice(5, 10).replace("-", "").replace("-", ""); // MMDD format
-//         const time = now.toTimeString().slice(0, 5).replace(":", "").slice(0, 2) + '.' + now.toTimeString().slice(3, 5); // HH.MM format
-//         const driverId = `DRIVER${date}${time}`;
-
-//         // Part 1: Save personal data (drivers_personal_data)
-//         const part1Data = {
-//             email,
-//             driverId,
-//             payment_Status,
-//             firstName,
-//             lastName,
-//             birthday,
-//             gender,
-//             telephone,
-//             address,
-//             isVehicleOwner,
-//             profileImg,
-//             nicFront,
-//             nicBack,
-//             licenseFront,
-//             licenseBack,
-//             registered_date,
-//             Points,
-//             isPassanger,
-//             fcmToken, // Including FCM token in part 1 data
-//             createdAt: now.toISOString()
-//         };
-
-//         // Part 2: Save vehicle-specific details (drivers_vehicle_data)
-//         const part2Data = {
-//             whichVehicle,
-//             vehicleNumber,
-//             brand,
-//             model,
-//             vehicleFrontImg,
-//             vehicleInsideImg,
-//             vehicleOutsideImg,
-//             yourVehicleOnly
-//         };
-
-//         // Part 3: Save current location and isActive status (drivers_location)
-//         const part3Data = {
-//             current_location: null,
-//             isActive: false,
-//         };
-
-//         // Part 4: Save the FCM token in Realtime Database
-//         const fcmTokenPath = `drivers_tokens/${email.replace(/\./g, "_")}`;
-
-//         // Batch operation for Firestore
-//         const batch = firestore.batch();
-        
-//         // Save to Firestore collections
-//         batch.set(firestore.collection("drivers_personal_data").doc(email), part1Data);
-//         batch.set(firestore.collection("drivers_vehicle_data").doc(email), part2Data);
-//         batch.set(firestore.collection("drivers_location").doc(email), part3Data);
-
-//         // Save the FCM token in the Realtime Database
-//         await realtimeDb.ref(fcmTokenPath).set(fcmToken);
-
-//         // Commit the batch operation
-//         await batch.commit();
-
-//         // Respond with success
-//         res.status(201).send({
-//             message: "Driver registered successfully",
-//             driverId,
-//             email
-//         });
-//     } catch (error) {
-//         // Handle errors and respond with a 500 status
-//         res.status(500).send({ error: error.message });
-//     }
-// };
-
-//new register driver 
-
-
-
-
 // Login function
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -526,42 +264,6 @@ const loginByPhoneNumber = async (req, res) => {
 };
 
 
-// Get User Details (protected route)
-// const getUserDetails = async (req, res) => {
-//     try {
-//         const email = req.user.email; 
-
-//         // Fetch user data from part 1 (users_part1)
-//         const part1Doc = await db.collection("users_part1").doc(email).get();
-
-//         if (!part1Doc.exists) {
-//             return res.status(404).send({ error: "User not found" });
-//         }
-
-//         // Fetch additional user details from part 2 (users_part2)
-//         const part2Doc = await db.collection("users_part2").doc(email).get();
-
-//         if (!part2Doc.exists) {
-//             return res.status(404).send({ error: "User details not found" });
-//         }
-
-//         // Combine part 1 and part 2 data
-//         const userDetails = {
-//             email: part1Doc.data().email,
-//             firstName: part2Doc.data().firstName,
-//             lastName: part2Doc.data().lastName
-//         };
-
-//         // Send user details in response
-//         res.send({
-//             message: "User details fetched successfully",
-//             data: userDetails
-//         });
-
-//     } catch (error) {
-//         res.status(500).send({ error: error.message });
-//     }
-// };
 
 const getAllUsers = async (req, res) => {
     try {
@@ -865,6 +567,35 @@ const updateFcmToken = async (req, res) => {
 };
 
 
+const getRideHistoryByUserId = async (req, res) => {
+    try {
+      const { userId } = req.params; // Get userId from route params
+  
+      // Fetch ride history for the user from the "rides" collection
+      const ridesSnapshot = await firestore
+        .collection("rides")
+        .where("userId", "==", userId) // Query rides by userId
+        .get();
+  
+      // Check if the user has any rides
+      if (ridesSnapshot.empty) {
+        return res.status(404).send({ message: "No ride history found for this user." });
+      }
+  
+      // Prepare the ride history data
+      const rideHistory = ridesSnapshot.docs.map(doc => ({
+        rideId: doc.id,
+        ...doc.data(),
+      }));
+  
+      // Return the ride history for the user
+      res.status(200).send({ rideHistory });
+    } catch (error) {
+      res.status(500).send({ error: error.message });
+    }
+  };
+  
+
 module.exports = {
     createUser,
     registerUser,
@@ -877,5 +608,7 @@ module.exports = {
     updateUserPoints,
     getAllBannedUsers,
     updateUser,
-    updateFcmToken
+    updateFcmToken,
+
+    getRideHistoryByUserId
 };

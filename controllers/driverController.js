@@ -907,6 +907,35 @@ const updateDriverFcmToken = async (req, res) => {
   }
 };
 
+const getRideHistoryByDriverId = async (req, res) => {
+  try {
+    const { driverId } = req.params; // Get driverId from route params
+
+    // Fetch ride history for the driver from the "rides" collection
+    const ridesSnapshot = await firestore
+      .collection("rides")
+      .where("driverId", "==", driverId) // Query rides by driverId
+      .get();
+
+    // Check if the driver has any rides
+    if (ridesSnapshot.empty) {
+      return res.status(404).send({ message: "No ride history found for this driver." });
+    }
+
+    // Prepare the ride history data
+    const rideHistory = ridesSnapshot.docs.map(doc => ({
+      rideId: doc.id,
+      ...doc.data(),
+    }));
+
+    // Return the ride history for the driver
+    res.status(200).send({ rideHistory });
+  } catch (error) {
+    res.status(500).send({ error: error.message });
+  }
+};
+
+
 module.exports = {
   getAllDrivers,
   getDriverByEmail,
@@ -923,5 +952,7 @@ module.exports = {
   getActiveDriversWithLocation,
   getAllBannedDrivers,
   updateDriver,
-  updateDriverFcmToken
+  updateDriverFcmToken,
+
+  getRideHistoryByDriverId
 };

@@ -299,6 +299,9 @@ const calculateFullCostNew1 = async (req, res) => {
       const returnStart = extendedDropLocation || dropped_location;
       const returnLegMeters = geolib.getDistance(returnStart, pickup_location);
       totalDistanceKm += returnLegMeters / 1000;
+
+      // For return trip, double the distance and calculate separately
+      totalDistanceKm *= 2;  // Double the total distance to account for the return trip
     }
 
     // 2️⃣ Fetch vehicle pricing package
@@ -334,6 +337,7 @@ const calculateFullCostNew1 = async (req, res) => {
     let fullCost = 0;
     fullCost += first_base_cost; // Base cost applies only once
 
+    // If total distance is greater than base distance, calculate extra cost
     if (totalDistanceKm > base_distance_km) {
       const extraKm = totalDistanceKm - base_distance_km;
       fullCost += Math.ceil(extraKm) * after_cost;
@@ -369,6 +373,7 @@ const calculateFullCostNew1 = async (req, res) => {
     return res.status(500).json({ error: "Failed to calculate full cost." });
   }
 };
+
 
 
 module.exports = {

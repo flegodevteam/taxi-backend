@@ -2353,6 +2353,191 @@ const scheduleFutureTrip = async (req, res) => {
   }
 };
 
+const requestRideNew1 = async (req, res) => {
+  try {
+    console.log("🚀 Ride request received:", req.body);
+
+    const {
+      latitude,
+      longitude,
+      whichVehicle,
+      destination,
+      userId,
+      phoneNumber,
+      isReturnTrip = false,
+    } = req.body;
+
+    if (!latitude || !longitude || !destination || !userId || !phoneNumber) {
+      console.log("❌ Error: Missing required fields");
+      return res.status(400).send({ error: "Required fields are missing." });
+    }
+
+    const db = admin.firestore();
+    const currentLocation = { latitude, longitude };
+    const destinationLocation = destination;
+    const rideId = `RIDE${Date.now()}`;
+    const preRideId = `PRERIDE${Date.now()}`;
+
+    console.log("📝 Saving pre-ride request...");
+    const preRideRequestRef = db.collection("preRideRequestNew").doc(preRideId);
+    await preRideRequestRef.set({
+      preRideId,
+      rideId,
+      userId,
+      phoneNumber,
+      currentLocation,
+      destinationLocation,
+      whichVehicle,
+      isReturnTrip,
+      status: "Processing",
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    console.log(`✅ Pre-ride request saved! PreRideId: ${preRideId}`);
+
+    const checkIfCanceled = async () => {
+      const preRideDoc = await preRideRequestRef.get();
+      if (preRideDoc.exists && preRideDoc.data().status === "Canceled") {
+        console.log("Ride request was canceled before proceeding.");
+        throw new Error("Ride request has been canceled.");
+      }
+    };
+
+    const driversWhoHaveRidesToday = await getDriversWhoHaveRidesToday(db);
+    let searchRadius = 5000;
+    const maxRadius = 20000;
+    let driversWithin5km = [];
+
+    while (searchRadius <= maxRadius) {
+      await checkIfCanceled();
+
+      const approvedDriversSnapshot = await db
+        .collection("drivers_personal_data")
+        .where("isAdminApprove", "==", "approved")
+        .get();
+
+      if (approvedDriversSnapshot.empty) {
+        return res.status(404).send({ message: "No approved drivers available." });
+      }
+
+      const approvedDriverEmails = approvedDriversSnapshot.docs.map((doc) => doc.id);
+
+      const activeDriversSnapshot = await db
+        .collection("drivers_location")
+        .where("isActive", "==", true)
+        .get();
+
+      if (activeDriversSnapshot.empty) {
+        return res.status(404).send({ message: "No active drivers available." });
+      }
+
+      await checkIfCanceled();
+
+      const activeApprovedDrivers = activeDriversSnapshot.docs
+        .filter((doc) => approvedDriverEmails.includes(doc.id))
+        .map((doc) => ({
+          email: doc.id,
+          current_location: doc.data().current_location,
+        }));
+
+      const finalDrivers = await Promise.all(
+        activeApprovedDrivers.map(async (driver) => {
+          await checkIfCanceled();
+          const personal = await db.collection("drivers_personal_data").doc(driver.email).get();
+          const vehicle = await db.collection("drivers_vehicle_data").doc(driver.email).get();
+          if (personal.exists && personal.data().payment_Status === true) {
+            return {
+              email: driver.email,
+              current_location: driver.current_location,
+              whichVehicle: vehicle.exists ? vehicle.data().whichVehicle : null,
+            };
+          }
+          return null;
+        })
+      );
+
+      await checkIfCanceled();
+      const eligibleDrivers = finalDrivers.filter((driver) => driver !== null);
+      const driversWithoutRidesToday = eligibleDrivers.filter(
+        (driver) => !driversWhoHaveRidesToday.has(driver.email)
+      );
+      const driversWithRidesToday = eligibleDrivers.filter(
+        (driver) => driversWhoHaveRidesToday.has(driver.email)
+      );
+
+      const allDriversToSendRequest = [...driversWithoutRidesToday, ...driversWithRidesToday];
+
+      if (allDriversToSendRequest.length === 0) {
+        return res.status(404).send({ message: "No available drivers at the moment." });
+      }
+
+      driversWithin5km = allDriversToSendRequest.filter((driver) => {
+        if (!driver.current_location) return false;
+        const driverLocation = {
+          latitude: driver.current_location.latitude,
+          longitude: driver.current_location.longitude,
+        };
+        return geolib.getDistance(currentLocation, driverLocation) <= searchRadius;
+      });
+
+      await checkIfCanceled();
+      if (driversWithin5km.length > 0) break;
+
+      searchRadius += 5000;
+      await new Promise((resolve) => setTimeout(resolve, 60000));
+    }
+
+    if (driversWithin5km.length === 0) {
+      return res.status(404).send({ message: "No drivers found within range." });
+    }
+
+    const sortedDrivers = driversWithin5km
+      .sort(
+        (a, b) =>
+          geolib.getDistance(currentLocation, a.current_location) -
+          geolib.getDistance(currentLocation, b.current_location)
+      )
+      .slice(0, 5);
+
+    const sentRequests = [];
+    let lastSentTime = Date.now();
+
+    for (const driver of sortedDrivers) {
+      await checkIfCanceled();
+      const timeElapsed = Date.now() - lastSentTime;
+      if (timeElapsed < 3000) await new Promise((resolve) => setTimeout(resolve, 3000 - timeElapsed));
+
+      try {
+        await sendRideRequest(driver.email, {
+          rideId,
+          userId,
+          phoneNumber,
+          currentLocation,
+          destinationLocation,
+          whichVehicle,
+          isReturnTrip,
+        });
+        sentRequests.push({ driverEmail: driver.email, status: "Request sent" });
+        lastSentTime = Date.now();
+      } catch (error) {
+        console.error(`❌ Error sending request to ${driver.email}:`, error.message);
+      }
+    }
+
+    await checkIfCanceled();
+    await preRideRequestRef.update({ status: "Proceed" });
+
+    res.send({
+      message: "Ride request sent to nearest drivers.",
+      sentRequests,
+      destination: destinationLocation,
+    });
+  } catch (error) {
+    console.error("❌ Error in requestRide:", error.message);
+    res.status(500).send({ error: error.message });
+  }
+};
+
 
 
 module.exports = {
@@ -2390,5 +2575,6 @@ module.exports = {
 
 
   requestRideNew,
-  scheduleFutureTrip
+  scheduleFutureTrip,
+  requestRideNew1
 };
