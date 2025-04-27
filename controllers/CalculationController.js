@@ -374,8 +374,148 @@ const calculateFullCostNew1 = async (req, res) => {
   }
 };
 
+const calculateExtraDistanceCost = async (params) => {
+  const { extraDistanceKm, vehicle_type } = params;
 
+  if (!extraDistanceKm || !vehicle_type) {
+    throw new Error("extraDistanceKm and vehicle_type are required.");
+  }
+
+  try {
+    // Fetch vehicle package
+    const packageSnapshot = await firestore
+      .collection("vehicle_packages_new")
+      .where("vehicle_type", "==", vehicle_type)
+      .get();
+
+    if (packageSnapshot.empty) {
+      throw new Error("Vehicle type not found.");
+    }
+
+    const vehiclePackage = packageSnapshot.docs[0].data();
+    const { after_cost } = vehiclePackage;
+
+    if (isNaN(extraDistanceKm) || isNaN(after_cost)) {
+      throw new Error("Invalid numeric values.");
+    }
+
+    const roundedDistance = Math.ceil(extraDistanceKm); // Round up to charge full km
+    const extraCost = roundedDistance * after_cost;
+
+    return {
+      extraDistanceKm: roundedDistance,
+      extraCost: extraCost.toFixed(2),
+    };
+  } catch (error) {
+    console.error("❌ Error in calculateExtraDistanceCost:", error.message);
+    throw error;
+  }
+};
+
+const calculateDynamicRideCost = async (params) => {
+  try {
+    const {
+      pickup_location,
+      dropped_location,
+      mid_trip_location = null,     // optional: new stop during trip
+      after_reach_location = null,  // optional: after reaching new extra
+      vehicle_type,
+      waiting_time = 0,
+      vehicle_weight = 0,
+      isReturnTrip = false,
+    } = params;
+
+    if (!pickup_location || !dropped_location || !vehicle_type) {
+      throw new Error("pickup_location, dropped_location and vehicle_type are required.");
+    }
+
+    let totalDistanceKm = 0;
+
+    // 1. Pickup → Drop
+    const firstLeg = geolib.getDistance(pickup_location, dropped_location);
+    totalDistanceKm += firstLeg / 1000;
+
+    // 2. If mid-trip stop: Drop → Mid-Trip
+    if (mid_trip_location) {
+      const midLeg = geolib.getDistance(dropped_location, mid_trip_location);
+      totalDistanceKm += midLeg / 1000;
+    }
+
+    // 3. After trip new location
+    if (after_reach_location) {
+      const afterStart = mid_trip_location || dropped_location;
+      const afterLeg = geolib.getDistance(afterStart, after_reach_location);
+      totalDistanceKm += afterLeg / 1000;
+    }
+
+    // 4. If return trip, double distance
+    if (isReturnTrip) {
+      totalDistanceKm *= 2;
+    }
+
+    console.log("🚗 Total Distance (km):", totalDistanceKm.toFixed(2));
+
+    // 5. Fetch pricing package
+    const packageSnapshot = await firestore
+      .collection('vehicle_packages_new')
+      .where('vehicle_type', '==', vehicle_type)
+      .limit(1)
+      .get();
+
+    if (packageSnapshot.empty) {
+      throw new Error("Vehicle type not found.");
+    }
+
+    const packageData = packageSnapshot.docs[0].data();
+    const {
+      base_distance_km,
+      first_base_cost,
+      after_cost,
+      waiting_time_cost,
+      weight_surcharge_rate = 0,
+    } = packageData;
+
+    if (isNaN(base_distance_km) || isNaN(first_base_cost) || isNaN(after_cost)) {
+      throw new Error("Invalid package data.");
+    }
+
+    // 6. Cost calculation
+    let fullCost = 0;
+
+    if (totalDistanceKm <= base_distance_km) {
+      fullCost += first_base_cost;
+    } else {
+      fullCost += first_base_cost;
+      const extraKm = totalDistanceKm - base_distance_km;
+      fullCost += Math.ceil(extraKm) * after_cost;
+    }
+
+    // Waiting time cost
+    const waitingCost = (waiting_time / 60) * waiting_time_cost;
+    fullCost += waitingCost;
+
+    // Weight surcharge cost
+    const weightCost = vehicle_weight * weight_surcharge_rate;
+    fullCost += weightCost;
+
+    // 7. Final result
+    return {
+      totalDistanceKm: totalDistanceKm.toFixed(2),
+      fullCost: fullCost.toFixed(2),
+      breakdown: {
+        baseDistanceKm: base_distance_km,
+        extraDistanceKm: (totalDistanceKm > base_distance_km) ? (totalDistanceKm - base_distance_km).toFixed(2) : "0.00",
+        extraDistanceCost: (totalDistanceKm > base_distance_km) ? (Math.ceil(totalDistanceKm - base_distance_km) * after_cost).toFixed(2) : "0.00",
+        waitingCost: waitingCost.toFixed(2),
+        weightCost: weightCost.toFixed(2),
+      }
+    };
+  } catch (error) {
+    console.error("❌ Error calculating dynamic ride cost:", error.message);
+    throw error;
+  }
+};
 
 module.exports = {
-  calculateFullCost,calculateFullCost2,calculateFullCost3,calculateFullCostNew,calculateFullCostNew1
+  calculateFullCost,calculateFullCost2,calculateFullCost3,calculateFullCostNew,calculateFullCostNew1,calculateExtraDistanceCost,calculateDynamicRideCost
 };

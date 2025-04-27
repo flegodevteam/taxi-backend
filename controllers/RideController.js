@@ -2,6 +2,8 @@ const geolib = require("geolib");
 const admin = require("firebase-admin");
 const { firestore, realtimeDb } = require("../firebase/firebaseConfig");
 const { calculateFullCost2 } = require("./CalculationController");
+
+const { calculateDynamicRideCost } = require("./CalculationController");
 const axios = require("axios");
 require("dotenv").config();
 
@@ -2538,7 +2540,217 @@ const requestRideNew1 = async (req, res) => {
   }
 };
 
+const updateRideStatusExtra = async (req, res) => {
+  const { rideId } = req.params;
+  const { action, latitude, longitude, extendedDropLocation } = req.body;
 
+  try {
+    if (!rideId) {
+      return res.status(400).json({
+        message: "Missing rideId in the request.",
+      });
+    }
+
+    // Fetch ride document
+    const ridesCollection = admin.firestore().collection("rides");
+    const querySnapshot = await ridesCollection
+      .where("confirmedRideId", "==", rideId)
+      .get();
+
+    if (querySnapshot.empty) {
+      return res.status(404).json({
+        message: "No ride found with the provided rideId.",
+      });
+    }
+
+    const rideDoc = querySnapshot.docs[0];
+    const rideData = rideDoc.data();
+    const rideRef = ridesCollection.doc(rideDoc.id);
+
+    if (action === "start") {
+      await rideRef.update({
+        rideStartedLocation: { latitude, longitude },
+        rideStartedTime: admin.firestore.FieldValue.serverTimestamp(),
+        rideStatus: "started",
+      });
+      return res.status(200).send({ message: "Ride started successfully." });
+    }
+
+    if (action === "end") {
+      const rideEndedLocation = { latitude, longitude };
+      const rideEndedTime = admin.firestore.Timestamp.now();
+
+      if (!(rideData.rideStartedTime instanceof admin.firestore.Timestamp)) {
+        return res.status(400).send({ error: "Invalid ride start time." });
+      }
+
+      // 📍 Distance from start to end
+      const baseDistance = calculateDistance(
+        rideData.rideStartedLocation,
+        rideEndedLocation
+      );
+
+      // ⏱️ Ride time
+      const rideTime = calculateRideTime(
+        rideData.rideStartedTime,
+        rideEndedTime
+      );
+
+      let totalDistance = baseDistance;
+      let extraDistance = 0;
+      let extraCost = 0;
+
+      // ➕ Extended drop calculation
+      if (extendedDropLocation) {
+        extraDistance = calculateDistance(rideEndedLocation, extendedDropLocation);
+        totalDistance += extraDistance;
+
+        // 🚗 Get pricing
+        const packageSnapshot = await admin
+          .firestore()
+          .collection("vehicle_packages")
+          .where("vehicle_type", "==", rideData.vehicle_type)
+          .limit(1)
+          .get();
+
+        if (!packageSnapshot.empty) {
+          const vehiclePackage = packageSnapshot.docs[0].data();
+          const afterCost = Number(vehiclePackage.after_cost);
+          if (!isNaN(afterCost)) {
+            extraCost = Math.ceil(extraDistance) * afterCost;
+          }
+        }
+      }
+
+      // 📝 Update ride document
+      await rideRef.update({
+        rideEndedLocation,
+        rideEndedTime,
+        rideStatus: "ended",
+        far_of_ride: totalDistance,
+        ride_time: rideTime,
+        extendedDropLocation: extendedDropLocation || null,
+        extraDistance: extraDistance,
+        extraCost: extraCost,
+      });
+
+      return res.status(200).send({
+        message: "Ride ended successfully.",
+        baseDistance: baseDistance.toFixed(2),
+        extraDistance: extraDistance.toFixed(2),
+        totalDistance: totalDistance.toFixed(2),
+        rideTime,
+        extraCost: extraCost.toFixed(2),
+      });
+    }
+
+    return res.status(400).json({ error: "Invalid action. Must be 'start' or 'end'." });
+
+  } catch (error) {
+    console.error("Error updating ride status:", error);
+    return res.status(500).json({
+      message: "Failed to update ride status.",
+      error: error.message,
+    });
+  }
+};
+
+const completeRideProcess = async (req, res) => {
+  const { rideId } = req.params;
+  const {
+    action,
+    latitude,
+    longitude,
+    mid_trip_location = null,
+    after_reach_location = null,
+    waiting_time = 0,
+    vehicle_weight = 0,
+    isReturnTrip = false // <== important to support return
+  } = req.body;
+
+  try {
+    if (!rideId) {
+      return res.status(400).json({ message: "Missing rideId in the request." });
+    }
+
+    const ridesCollection = admin.firestore().collection("rides");
+    const querySnapshot = await ridesCollection
+      .where("confirmedRideId", "==", rideId)
+      .limit(1)
+      .get();
+
+    if (querySnapshot.empty) {
+      return res.status(404).json({ message: "No ride found with the provided rideId." });
+    }
+
+    const rideDoc = querySnapshot.docs[0];
+    const rideData = rideDoc.data();
+    const rideRef = ridesCollection.doc(rideDoc.id);
+
+    if (action === "start") {
+      await rideRef.update({
+        rideStartedLocation: { latitude, longitude },
+        rideStartedTime: admin.firestore.FieldValue.serverTimestamp(),
+        rideStatus: "started",
+      });
+      return res.status(200).json({ message: "Ride started successfully." });
+    }
+
+    if (action === "end") {
+      if (!(rideData.rideStartedTime instanceof admin.firestore.Timestamp)) {
+        return res.status(400).json({ error: "Invalid ride start time." });
+      }
+
+      const rideEndedLocation = { latitude, longitude };
+      const rideEndedTime = admin.firestore.Timestamp.now();
+
+      const calculationParams = {
+        pickup_location: rideData.rideStartedLocation,
+        dropped_location: rideEndedLocation,
+        mid_trip_location,
+        after_reach_location,
+        vehicle_type: rideData.vehicle_type,
+        waiting_time,
+        vehicle_weight,
+        isReturnTrip,
+      };
+
+      const dynamicCost = await calculateDynamicRideCost(calculationParams);
+
+      await rideRef.update({
+        rideEndedLocation,
+        rideEndedTime,
+        rideStatus: "ended",
+        far_of_ride: dynamicCost.totalDistanceKm,
+        ride_time: calculateRideTime(rideData.rideStartedTime, rideEndedTime),
+        midTripLocation: mid_trip_location || null,
+        afterReachLocation: after_reach_location || null,
+        isReturnTrip,
+        waitingTime: waiting_time,
+        vehicleWeight: vehicle_weight,
+        fullCost: dynamicCost.fullCost,
+        costBreakdown: dynamicCost.breakdown,
+      });
+
+      return res.status(200).json({
+        message: "Ride completed successfully.",
+        rideId,
+        rideSummary: {
+          totalDistanceKm: dynamicCost.totalDistanceKm,
+          totalCost: dynamicCost.fullCost,
+          breakdown: dynamicCost.breakdown,
+          isReturnTrip
+        },
+      });
+    }
+
+    return res.status(400).json({ error: "Invalid action. Must be 'start' or 'end'." });
+
+  } catch (error) {
+    console.error("❌ Error in completeRideProcess:", error.message);
+    return res.status(500).json({ error: "Internal server error." });
+  }
+};
 
 module.exports = {
   getAcceptedRequests,
@@ -2576,5 +2788,7 @@ module.exports = {
 
   requestRideNew,
   scheduleFutureTrip,
-  requestRideNew1
+  requestRideNew1,
+  updateRideStatusExtra,
+  completeRideProcess
 };
