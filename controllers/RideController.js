@@ -4,6 +4,7 @@ const { firestore, realtimeDb } = require("../firebase/firebaseConfig");
 const { calculateFullCost2 } = require("./CalculationController");
 
 const { calculateDynamicRideCost } = require("./CalculationController");
+const { calculateRideCost } = require("./CalculationController");
 const axios = require("axios");
 require("dotenv").config();
 
@@ -1133,12 +1134,6 @@ const getRideRequestsForDriver = (ws, driverId) => {
   });
 };
 
-
-
-
-
-
-  
 
 const updateRideStatus = async (req, res) => {
   const { rideId } = req.params; // Get rideId from URL parameter
@@ -2752,6 +2747,109 @@ const completeRideProcess = async (req, res) => {
   }
 };
 
+// const admin = require("firebase-admin");
+// const geolib = require("geolib");
+// const { calculateRideCost } = require("../utils/costCalculator");
+
+const updateRideStatusNew = async (req, res) => {
+  const { rideId } = req.params;
+  const { action, latitude, longitude } = req.body;
+
+  try {
+    if (!rideId) {
+      return res.status(400).json({ message: "Missing rideId in the request." });
+    }
+
+    const ridesCollection = admin.firestore().collection("rides");
+    const querySnapshot = await ridesCollection
+      .where("confirmedRideId", "==", rideId)
+      .limit(1)
+      .get();
+
+    if (querySnapshot.empty) {
+      return res.status(404).json({ message: "No ride found with the provided rideId." });
+    }
+
+    const rideDoc = querySnapshot.docs[0];
+    const rideData = rideDoc.data();
+    const rideRef = ridesCollection.doc(rideDoc.id);
+
+    if (action === "start") {
+      await rideRef.update({
+        rideStartedLocation: { latitude, longitude },
+        rideStartedTime: admin.firestore.FieldValue.serverTimestamp(),
+        rideStatus: "started",
+      });
+      return res.status(200).send({ message: "Ride started successfully." });
+    }
+
+    else if (action === "end") {
+      const rideEndedLocation = { latitude, longitude };
+      const rideEndedTime = admin.firestore.Timestamp.now();
+
+      if (!(rideData.rideStartedTime instanceof admin.firestore.Timestamp)) {
+        return res.status(400).send({ error: "Invalid ride start time." });
+      }
+
+      const rideStartTime = rideData.rideStartedTime.toMillis();
+      const rideEndTime = rideEndedTime.toMillis();
+      const rideTimeMinutes = ((rideEndTime - rideStartTime) / 60000).toFixed(2);
+
+      const actualDistanceKm = geolib.getDistance(
+        rideData.rideStartedLocation,
+        rideEndedLocation
+      ) / 1000;
+
+      const plannedDistanceKm = geolib.getDistance(
+        rideData.rideStartedLocation,
+        rideData.dropped_location
+      ) / 1000;
+
+      let dropStatus = "normal";
+      if (actualDistanceKm < plannedDistanceKm - 1) {
+        dropStatus = "middle_drop";
+      } else if (actualDistanceKm > plannedDistanceKm + 1) {
+        dropStatus = "extended_trip";
+      }
+
+      // 🧠 Use dynamic cost calculator
+      const costResult = await calculateRideCost({
+        pickup_location: rideData.rideStartedLocation,
+        dropped_location: rideEndedLocation,
+        vehicle_type: rideData.vehicle_type,
+        waiting_time: rideTimeMinutes,
+        vehicle_weight: rideData.vehicle_weight || 0,
+        isReturnTrip: rideData.isReturnTrip || false,
+      });
+
+      await rideRef.update({
+        rideEndedLocation,
+        rideEndedTime,
+        rideStatus: "ended",
+        far_of_ride: actualDistanceKm.toFixed(2),
+        ride_time: rideTimeMinutes,
+        totalCost: costResult.fullCost,
+        costBreakdown: costResult.breakdown,
+        dropStatus,
+      });
+
+      return res.status(200).send({
+        message: `Ride ended successfully (${dropStatus})`,
+        rideId,
+        costDetails: costResult,
+      });
+    }
+
+    else {
+      return res.status(400).json({ error: "Invalid action. Must be 'start' or 'end'." });
+    }
+  } catch (error) {
+    console.error("Error updating ride status:", error);
+    return res.status(500).json({ message: "Failed to update ride status.", error: error.message });
+  }
+};
+
+
 module.exports = {
   getAcceptedRequests,
   requestRide,
@@ -2790,5 +2888,6 @@ module.exports = {
   scheduleFutureTrip,
   requestRideNew1,
   updateRideStatusExtra,
-  completeRideProcess
+  completeRideProcess,
+  updateRideStatusNew 
 };

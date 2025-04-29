@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {getMostLatestRideByDriver,getMostLatestRideByUser,updateUserPoints,getAllRides,fetchAllPreRideRequests,cancelRideRequest,getAssignedDriverLocation ,getEndedRidesByUser,getEndedRidesByDriver,getStartedRidesByDriver,getStartedRidesByUser,updateRideCost,getLatestRideByUser,
     getAllRatings,getRejectedRequests,getAcceptedRequests,getAllRidesByDate,requestRide,getRideRequestsForDriver,handleRideRequest,updateWaitingTime,getRideDetails,updateRideStatus,updateRideRating,getRideRating,getAllRideRequests,getStartedRidesByDriverLast,getAllStartedRides,getAllEndedRides,
-    requestRideNew,scheduleFutureTrip,updateRideStatusExtra,completeRideProcess} = require("../controllers/RideController")
+    requestRideNew,scheduleFutureTrip,updateRideStatusExtra,completeRideProcess,updateRideStatusNew} = require("../controllers/RideController")
 const {authenticateToken} = require("../Middleware/Auth")
 
 router.post('/request-ride', authenticateToken,requestRide);
@@ -81,6 +81,8 @@ router.post('/schedule-trip', authenticateToken, scheduleFutureTrip);
 router.put("/update-ride-status-extra/:rideId", authenticateToken, updateRideStatusExtra);
 
 router.put('/complete-ride-process/:rideId', authenticateToken, completeRideProcess);
+
+router.put("/update-ride-status-new/:rideId",authenticateToken, updateRideStatusNew);
 
 
 module.exports = router;
